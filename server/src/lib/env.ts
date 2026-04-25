@@ -23,6 +23,19 @@ const EnvSchema = z.object({
 
   FLAT_CUSTOMER_FEE_CENTS: z.coerce.number().int().nonnegative().default(150),
   COMMISSION_RATE: z.coerce.number().min(0).max(1).default(0.1),
+
+  HOURS_FOR_FULL_REFUND: z.coerce.number().nonnegative().default(48),
+  HOURS_FOR_PARTIAL_REFUND: z.coerce.number().nonnegative().default(24),
+  PARTIAL_REFUND_RATE: z.coerce.number().min(0).max(1).default(0.5),
+
+  S3_REGION: z.string().default('us-west-2'),
+  S3_BUCKET: z.string().optional(),
+  S3_ENDPOINT: z.string().url().optional().or(z.literal('').transform(() => undefined)),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
+
+  SUPPORT_INBOX_EMAIL: z.string().email().default('support@capture.app'),
 });
 
 function loadEnv() {

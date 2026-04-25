@@ -42,6 +42,31 @@ enum BookingStatus {
   refunded
 }
 
+enum CancelledBy {
+  customer
+  photographer
+  platform
+}
+
+enum GalleryStatus {
+  awaiting_delivery
+  delivered
+}
+
+enum GalleryItemStatus {
+  pending_upload
+  ready
+  removed
+}
+
+enum SupportCategory {
+  booking
+  payment
+  photographer
+  account
+  other
+}
+
 enum VoucherCategory {
   any
   wedding_video
@@ -70,6 +95,7 @@ model User {
   receivedVouchers    Voucher[]          @relation("VoucherRecipient")
   devices             Device[]
   refreshTokens       RefreshToken[]
+  supportTickets      SupportTicket[]
 
   @@index([role])
 }
@@ -182,6 +208,15 @@ model Booking {
   voucher                Voucher?      @relation("VoucherRedemption", fields: [voucherId], references: [id])
 
   review                 Review?
+  gallery                Gallery?
+
+  // Cancellation bookkeeping. cancelledBy + reason help support and analytics;
+  // refundAmountCents records what we actually returned to the customer once
+  // the Stripe refund completes.
+  cancelledAt            DateTime?
+  cancelledBy            CancelledBy?
+  cancelReason           String?
+  refundAmountCents      Int?
 
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
@@ -263,5 +298,70 @@ model IdempotencyKey {
   createdAt    DateTime @default(now())
 
   @@unique([userId, key])
+  @@index([createdAt])
+}
+
+/// Photo delivery container — one per Booking. Photographers upload to it after
+/// the session; customers view, share, and download from it. `portfolioConsent`
+/// controls whether the photographer may use these photos in their public
+/// portfolio (default false; customer flips it explicitly).
+model Gallery {
+  id                String        @id @default(cuid())
+  bookingId         String        @unique
+  booking           Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status            GalleryStatus @default(awaiting_delivery)
+  notes             String?
+  portfolioConsent  Boolean       @default(false)
+  deliveredAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  items             GalleryItem[]
+  shareLinks        GalleryShareLink[]
+}
+
+model GalleryItem {
+  id          String            @id @default(cuid())
+  galleryId   String
+  gallery     Gallery           @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  storageKey  String            // S3 object key
+  mimeType    String
+  bytes       Int?
+  width       Int?
+  height      Int?
+  status      GalleryItemStatus @default(pending_upload)
+  uploadedAt  DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([galleryId])
+}
+
+/// Public, time-limited gallery access via opaque token. Customer issues the
+/// token from the gallery view; recipients hit `/public/galleries/:token` and
+/// see the gallery without needing a Capture account.
+model GalleryShareLink {
+  id         String    @id @default(cuid())
+  galleryId  String
+  gallery    Gallery   @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([galleryId])
+}
+
+model SupportTicket {
+  id         String          @id @default(cuid())
+  userId     String?
+  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email      String
+  category   SupportCategory @default(other)
+  subject    String
+  body       String
+  bookingId  String?
+  createdAt  DateTime        @default(now())
+
+  @@index([userId])
   @@index([createdAt])
 }

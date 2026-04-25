@@ -12,6 +12,8 @@ import { bookingsRouter } from './routes/bookings.js';
 import { vouchersRouter } from './routes/vouchers.js';
 import { configRouter } from './routes/config.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
+import { galleriesRouter } from './routes/galleries.js';
+import { supportRouter } from './routes/support.js';
 import { authRateLimit } from './middleware/rateLimit.js';
 import { startSlotSweeper } from './services/slotSweeper.js';
 
@@ -34,6 +36,8 @@ app.use('/config', configRouter);
 app.use('/photographers', photographersRouter);
 app.use('/bookings', bookingsRouter);
 app.use('/vouchers', vouchersRouter);
+app.use('/galleries', galleriesRouter);
+app.use('/support', supportRouter);
 
 app.use(errorHandler);
 

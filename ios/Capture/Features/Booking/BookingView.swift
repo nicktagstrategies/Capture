@@ -66,6 +66,7 @@ final class BookingViewModel {
 
 struct BookingView: View {
     @State var vm: BookingViewModel
+    @State private var showHelp = false
     @Environment(\.dismiss) private var dismiss
 
     init(photographerId: String) {
@@ -95,8 +96,12 @@ struct BookingView: View {
         .navigationTitle("")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Help") {}.foregroundStyle(Color.captureInkMuted)
+                Button("Help") { showHelp = true }
+                    .foregroundStyle(Color.captureInkMuted)
             }
+        }
+        .sheet(isPresented: $showHelp) {
+            HelpSheet(bookingId: nil)
         }
         .task { await vm.load() }
         .safeAreaInset(edge: .bottom) { checkoutBar }

@@ -8,10 +8,10 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 
 | ID | Priority | Status | Question / blindspot | Notes |
 |----|----------|--------|----------------------|-------|
-| Q-PROD-1 | P0 | open | **Photo delivery is THE product and isn't designed.** Where do customers receive their photos? Watermarked previews? Full-res unlock after rating? Print orders? Permalinks? | Without this, Capture is just a scheduler. Affects data model (deliverable assets, expiration, sharing), CDN choice, watermarking pipeline. |
-| Q-PROD-2 | P0 | open | **Pre-booking discovery screen missing.** No portfolio/profile view between Home and Booking. | Tackled in M1.5 with `PhotographerProfileView`. |
+| Q-PROD-1 | P0 | done | **Photo delivery.** Gallery model, S3-presigned uploads, delivered-status promotion, public share-link tokens, customer consent toggle for portfolio use. | V1 ships full-res only (no watermark/proof tier); thumbnails + derivatives are a follow-up worker task. |
+| Q-PROD-2 | P0 | done | **Pre-booking discovery screen missing.** No portfolio/profile view between Home and Booking. | Resolved by `PhotographerProfileView`. |
 | Q-PROD-3 | P0 | open | **No customer↔photographer messaging.** | Need thread + message models, push targets, attachment support, read receipts. |
-| Q-PROD-4 | P0 | open | **Cancellation / reschedule flow doesn't exist.** | Needs policy decision: refund window, photographer-side commission recovery, timing. |
+| Q-PROD-4 | P0 | done | **Cancellation / reschedule flow.** | Refund policy in `services/refunds.ts`: full ≥48h, 50% in 24-48h, none <24h, full when photographer/platform cancels. Reschedule swaps the slot atomically. |
 | Q-PROD-5 | P0 | decided | **Voucher fraud vector — anyone can mint free percentage-off codes.** | Decision: split concept into (a) gift cards (sender pays), (b) promo codes (platform-issued). User-issued discounts will pay through Stripe at send time. |
 | Q-PROD-6 | P1 | open | Tipping post-session. | |
 | Q-PROD-7 | P1 | open | Customer favorites / "rebook same photographer". | |
@@ -62,9 +62,9 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 | ID | Priority | Status | Question / blindspot | Notes |
 |----|----------|--------|----------------------|-------|
 | Q-OPS-1 | P0 | open | Photographer KYC + portfolio review queue. | Stripe Identity for ID; humans for portfolio + insurance check. |
-| Q-OPS-2 | P0 | open | Refund policy + automatic-refund rules for no-shows / weather. | |
+| Q-OPS-2 | P0 | done | Refund policy + automatic-refund rules. | V1 policy: tunable via env (`HOURS_FOR_FULL_REFUND`, `HOURS_FOR_PARTIAL_REFUND`, `PARTIAL_REFUND_RATE`). No-show / weather adjudication still TBD. |
 | Q-OPS-3 | P0 | open | Privacy policy, ToS, photographer agreement, model release. | App Store submission gate. |
-| Q-OPS-4 | P0 | open | Customer support channel + tooling (Frontapp / Intercom). | "Help" button in design routes nowhere. |
+| Q-OPS-4 | P0 | done | Customer support channel + tooling. | Help button is wired to a sheet that POSTs to `/support/tickets`; tickets persist server-side. Outbound email to `SUPPORT_INBOX_EMAIL` is a TODO once we pick a transactional email provider. |
 | Q-OPS-5 | P1 | open | Background checks for photographers (Checkr or equivalent). | |
 | Q-OPS-6 | P1 | open | Sales tax (Stripe Tax integration; merchant-of-record decision). | Photography taxable in CA, NY, TX, etc. |
 | Q-OPS-7 | P1 | open | Disputes / chargeback ops. | |

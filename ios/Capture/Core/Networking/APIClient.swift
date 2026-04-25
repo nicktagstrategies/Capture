@@ -57,6 +57,29 @@ final class APIClient {
         return try await perform(req)
     }
 
+    func patch<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
+        var req = request(path: path, method: "PATCH")
+        req.httpBody = try encoder.encode(body)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return try await perform(req)
+    }
+
+    func delete<T: Decodable>(_ path: String) async throws -> T {
+        try await perform(request(path: path, method: "DELETE"))
+    }
+
+    func upload(_ urlString: String, data: Data, mimeType: String) async throws {
+        guard let url = URL(string: urlString) else { throw APIError.badStatus(0, "bad url") }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue(mimeType, forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+        let (_, response) = try await URLSession.shared.upload(for: req, from: data)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw APIError.badStatus((response as? HTTPURLResponse)?.statusCode ?? 0, nil)
+        }
+    }
+
     private func request(path: String, method: String, query: [URLQueryItem] = []) -> URLRequest {
         var comps = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { comps.queryItems = query }

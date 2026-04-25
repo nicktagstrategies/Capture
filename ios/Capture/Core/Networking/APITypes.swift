@@ -103,10 +103,79 @@ struct BookingSummary: Codable, Identifiable, Hashable {
     let totalCents: Int
     let photographer: PhotographerRef
     let service: ServiceRef
+    let gallery: GalleryRef?
+    let cancelledAt: Date?
+    let refundAmountCents: Int?
+}
+
+struct GalleryRef: Codable, Hashable {
+    let id: String
+    let status: String
+    let deliveredAt: Date?
 }
 
 struct BookingListResponse: Codable {
     let bookings: [BookingSummary]
+}
+
+struct RefundPreview: Codable, Hashable {
+    let refundCents: Int
+    let rule: String
+}
+
+struct BookingDetail: Codable, Identifiable, Hashable {
+    struct PhotographerRef: Codable, Hashable {
+        let id: String
+        let name: String
+        let avatarUrl: String?
+        let homeCity: String
+        let timezone: String
+    }
+    struct ServiceRef: Codable, Hashable {
+        let id: String
+        let title: String
+        let durationMinutes: Int
+        let priceCents: Int
+    }
+    let id: String
+    let status: String
+    let startsAt: Date
+    let endsAt: Date
+    let bookingAddress: String?
+    let subtotalCents: Int
+    let customerFeeCents: Int
+    let totalCents: Int
+    let refundAmountCents: Int?
+    let cancelledAt: Date?
+    let cancelledBy: String?
+    let photographer: PhotographerRef
+    let service: ServiceRef
+    let gallery: GalleryRef?
+    let refundPreview: RefundPreview
+    let role: String
+}
+
+struct GalleryItem: Codable, Identifiable, Hashable {
+    let id: String
+    let mimeType: String
+    let width: Int?
+    let height: Int?
+    let url: String
+}
+
+struct GalleryView: Codable, Hashable {
+    let id: String
+    let status: String
+    let portfolioConsent: Bool
+    let deliveredAt: Date?
+    let bookingId: String
+    let role: String
+    let items: [GalleryItem]
+}
+
+struct ShareLinkResponse: Codable, Hashable {
+    let token: String
+    let expiresAt: Date?
 }
 
 struct Voucher: Codable, Identifiable, Hashable {
