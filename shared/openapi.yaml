@@ -1,0 +1,271 @@
+openapi: 3.1.0
+info:
+  title: Capture API
+  version: 0.1.0
+  description: |
+    HTTP contract between the Capture iOS app and the Capture server.
+    The iOS networking layer mirrors these shapes by hand today; once the
+    contract stabilizes we'll codegen `APITypes.swift` from this file.
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://api.capture.app
+    description: Production (placeholder)
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: OK
+  /config:
+    get:
+      summary: Runtime config for the iOS client
+      responses:
+        '200':
+          description: Config values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Config'
+  /auth/email/signup:
+    post:
+      summary: Sign up with email + password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string }
+      responses:
+        '201': { description: Session, content: { application/json: { schema: { $ref: '#/components/schemas/SessionResponse' } } } }
+  /auth/email/login:
+    post:
+      summary: Log in with email + password
+      responses:
+        '200': { description: Session, content: { application/json: { schema: { $ref: '#/components/schemas/SessionResponse' } } } }
+  /auth/apple:
+    post:
+      summary: Exchange an Apple identity token for a Capture session
+      responses:
+        '200': { description: Session, content: { application/json: { schema: { $ref: '#/components/schemas/SessionResponse' } } } }
+  /auth/google:
+    post:
+      summary: Exchange a Google identity token for a Capture session
+      responses:
+        '200': { description: Session, content: { application/json: { schema: { $ref: '#/components/schemas/SessionResponse' } } } }
+  /auth/refresh:
+    post:
+      summary: Exchange a refresh token for a new token pair
+      responses:
+        '200': { description: New tokens, content: { application/json: { schema: { $ref: '#/components/schemas/TokenPair' } } } }
+  /photographers:
+    get:
+      summary: Search nearby photographers
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radiusKm, in: query, required: false, schema: { type: number, default: 25 } }
+        - { name: category, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: Photographer cards
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photographers:
+                    type: array
+                    items: { $ref: '#/components/schemas/PhotographerCard' }
+  /photographers/{id}:
+    get:
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200':
+          description: Photographer detail + services
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotographerDetail' }
+  /photographers/{id}/availability:
+    get:
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: to,   in: query, required: false, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: Open slots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slots:
+                    type: array
+                    items: { $ref: '#/components/schemas/Slot' }
+  /bookings:
+    get:
+      summary: Current user's bookings
+      responses:
+        '200':
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookings:
+                    type: array
+                    items: { $ref: '#/components/schemas/BookingSummary' }
+    post:
+      summary: Create a booking + Stripe PaymentIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serviceId, slotId]
+              properties:
+                serviceId: { type: string }
+                slotId: { type: string }
+                voucherId: { type: string }
+                bookingAddress: { type: string }
+      responses:
+        '201':
+          description: Booking created; returns Stripe client secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookingId: { type: string }
+                  clientSecret: { type: string }
+                  totalCents: { type: integer }
+  /vouchers:
+    get:
+      summary: Vouchers received by the current user
+      responses:
+        '200':
+          description: Vouchers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vouchers:
+                    type: array
+                    items: { $ref: '#/components/schemas/Voucher' }
+    post:
+      summary: Send a voucher to another user
+      responses:
+        '201': { description: Created }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Config:
+      type: object
+      properties:
+        stripePublishableKey: { type: string }
+        flatCustomerFeeCents: { type: integer }
+        commissionRate: { type: number }
+    SessionUser:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [customer, photographer, both] }
+        avatarUrl: { type: string, nullable: true }
+    SessionResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        user: { $ref: '#/components/schemas/SessionUser' }
+    TokenPair:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+    PhotographerCard:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        heroImageUrl: { type: string, nullable: true }
+        homeCity: { type: string }
+        bio: { type: string, nullable: true }
+        hourlyRateCents: { type: integer }
+        avgRating: { type: number }
+        ratingCount: { type: integer }
+        distanceMeters: { type: number }
+    PhotographerDetail:
+      allOf:
+        - $ref: '#/components/schemas/PhotographerCard'
+        - type: object
+          properties:
+            services:
+              type: array
+              items: { $ref: '#/components/schemas/Service' }
+    Service:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        durationMinutes: { type: integer }
+        priceCents: { type: integer }
+        category: { type: string }
+    Slot:
+      type: object
+      properties:
+        id: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+    BookingSummary:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        totalCents: { type: integer }
+        photographer:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            avatarUrl: { type: string, nullable: true }
+            homeCity: { type: string }
+        service:
+          type: object
+          properties:
+            title: { type: string }
+    Voucher:
+      type: object
+      properties:
+        id: { type: string }
+        percentOff: { type: integer }
+        category: { type: string }
+        expiresAt: { type: string, format: date-time }
+        note: { type: string, nullable: true }
+        sender:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            avatarUrl: { type: string, nullable: true }
+
+security:
+  - bearerAuth: []

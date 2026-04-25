@@ -1,0 +1,57 @@
+name: server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/server.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/server.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: capture
+          POSTGRES_PASSWORD: capture
+          POSTGRES_DB: capture_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U capture"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://capture:capture@localhost:5432/capture_test?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-that-is-long-enough-for-validation-please
+      JWT_REFRESH_SECRET: ci-refresh-secret-that-is-long-enough-for-validation-please
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build

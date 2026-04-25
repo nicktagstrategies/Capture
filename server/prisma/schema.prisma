@@ -1,0 +1,237 @@
+// Capture Prisma schema
+// PostGIS is enabled via the raw SQL migration that runs `CREATE EXTENSION postgis;`.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+enum UserRole {
+  customer
+  photographer
+  both
+}
+
+enum ServiceCategory {
+  portrait
+  wedding
+  wedding_video
+  event
+  family
+  headshot
+  other
+}
+
+enum SlotStatus {
+  open
+  held
+  booked
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+  refunded
+}
+
+enum VoucherCategory {
+  any
+  wedding_video
+  portrait
+  event
+  family
+  headshot
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  avatarUrl     String?
+  role          UserRole @default(customer)
+  appleSub      String?  @unique
+  googleSub     String?  @unique
+  passwordHash  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  photographerProfile PhotographerProfile?
+  paymentMethods      PaymentMethod[]
+  bookings            Booking[]          @relation("CustomerBookings")
+  sentVouchers        Voucher[]          @relation("VoucherSender")
+  receivedVouchers    Voucher[]          @relation("VoucherRecipient")
+  devices             Device[]
+  refreshTokens       RefreshToken[]
+
+  @@index([role])
+}
+
+model PhotographerProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio               String?
+  homeCity          String
+  homeAddress       String?
+  heroImageUrl      String?
+  hourlyRateCents   Int      @default(0)
+  stripeAccountId   String?  @unique
+  verifiedAt        DateTime?
+  avgRating         Float    @default(0)
+  ratingCount       Int      @default(0)
+  // PostGIS point column is added via raw SQL migration; see migrations/ for details.
+  // Prisma cannot model the GEOGRAPHY type directly, so it lives unmanaged.
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  services          Service[]
+  slots             AvailabilitySlot[]
+  bookings          Booking[]
+
+  @@index([homeCity])
+}
+
+model Service {
+  id              String          @id @default(cuid())
+  photographerId  String
+  photographer    PhotographerProfile @relation(fields: [photographerId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  durationMinutes Int
+  priceCents      Int
+  category        ServiceCategory
+  active          Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  bookings        Booking[]
+
+  @@index([photographerId])
+  @@index([category])
+}
+
+model AvailabilitySlot {
+  id             String     @id @default(cuid())
+  photographerId String
+  photographer   PhotographerProfile @relation(fields: [photographerId], references: [id], onDelete: Cascade)
+  startsAt       DateTime
+  endsAt         DateTime
+  status         SlotStatus @default(open)
+  heldUntil      DateTime?
+  createdAt      DateTime   @default(now())
+
+  booking        Booking?
+
+  @@index([photographerId, startsAt])
+  @@index([status])
+}
+
+model PaymentMethod {
+  id                     String   @id @default(cuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentMethodId  String   @unique
+  brand                  String
+  last4                  String
+  expMonth               Int
+  expYear                Int
+  isDefault              Boolean  @default(false)
+  createdAt              DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Booking {
+  id                     String        @id @default(cuid())
+  customerId             String
+  customer               User          @relation("CustomerBookings", fields: [customerId], references: [id])
+  photographerId         String
+  photographer           PhotographerProfile @relation(fields: [photographerId], references: [id])
+  serviceId              String
+  service                Service       @relation(fields: [serviceId], references: [id])
+  slotId                 String        @unique
+  slot                   AvailabilitySlot @relation(fields: [slotId], references: [id])
+  status                 BookingStatus @default(pending)
+
+  subtotalCents          Int
+  customerFeeCents       Int
+  commissionCents        Int
+  discountCents          Int           @default(0)
+  totalCents             Int
+
+  stripePaymentIntentId  String?       @unique
+  stripeClientSecret     String?
+
+  bookingAddress         String?
+  startsAt               DateTime
+  endsAt                 DateTime
+
+  voucherId              String?       @unique
+  voucher                Voucher?      @relation("VoucherRedemption", fields: [voucherId], references: [id])
+
+  review                 Review?
+
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([customerId, startsAt])
+  @@index([photographerId, startsAt])
+  @@index([status])
+}
+
+model Voucher {
+  id                String          @id @default(cuid())
+  senderId          String
+  sender            User            @relation("VoucherSender", fields: [senderId], references: [id])
+  recipientId       String
+  recipient         User            @relation("VoucherRecipient", fields: [recipientId], references: [id])
+  percentOff        Int
+  category          VoucherCategory @default(any)
+  note              String?
+  expiresAt         DateTime
+  redeemedAt        DateTime?
+  redeemedBooking   Booking?        @relation("VoucherRedemption")
+  createdAt         DateTime        @default(now())
+
+  @@index([recipientId, redeemedAt])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  rating     Int
+  body       String?
+  createdAt  DateTime @default(now())
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apnsToken  String   @unique
+  platform   String   @default("ios")
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
