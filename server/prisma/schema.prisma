@@ -76,6 +76,17 @@ enum VoucherCategory {
   headshot
 }
 
+enum VoucherStatus {
+  /// Sender created the voucher but their payment is still processing.
+  pending_payment
+  /// Payment succeeded; recipient can redeem it.
+  active
+  /// Recipient applied it to a booking.
+  redeemed
+  /// Sender's payment failed or was refunded; voucher is dead.
+  voided
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -226,21 +237,29 @@ model Booking {
   @@index([status])
 }
 
+/// Gift cards. Sender pays for them up-front via Stripe; only `active`
+/// vouchers (= payment confirmed) are redeemable. Without this, anyone could
+/// mint free percentage-off vouchers and gift them around.
 model Voucher {
-  id                String          @id @default(cuid())
-  senderId          String
-  sender            User            @relation("VoucherSender", fields: [senderId], references: [id])
-  recipientId       String
-  recipient         User            @relation("VoucherRecipient", fields: [recipientId], references: [id])
-  percentOff        Int
-  category          VoucherCategory @default(any)
-  note              String?
-  expiresAt         DateTime
-  redeemedAt        DateTime?
-  redeemedBooking   Booking?        @relation("VoucherRedemption")
-  createdAt         DateTime        @default(now())
+  id                            String          @id @default(cuid())
+  senderId                      String
+  sender                        User            @relation("VoucherSender", fields: [senderId], references: [id])
+  recipientId                   String
+  recipient                     User            @relation("VoucherRecipient", fields: [recipientId], references: [id])
+  percentOff                    Int
+  category                      VoucherCategory @default(any)
+  note                          String?
+  expiresAt                     DateTime
+  status                        VoucherStatus   @default(pending_payment)
+  purchaseAmountCents           Int
+  purchaseStripePaymentIntentId String?         @unique
+  purchaseClientSecret          String?
+  redeemedAt                    DateTime?
+  redeemedBooking               Booking?        @relation("VoucherRedemption")
+  createdAt                     DateTime        @default(now())
 
-  @@index([recipientId, redeemedAt])
+  @@index([recipientId, status])
+  @@index([senderId])
 }
 
 model Review {

@@ -17,6 +17,7 @@ final class PhotographerProfileViewModel {
         defer { isLoading = false }
         do {
             detail = try await APIClient.shared.get("/photographers/\(photographerId)")
+            Analytics.capture(.photographerOpened, properties: ["photographer_id": photographerId])
         } catch {
             self.error = error.localizedDescription
         }

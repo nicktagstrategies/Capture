@@ -1,3 +1,7 @@
+// Sentry must initialize before any other imports that may throw.
+import { initSentry, attachSentryToExpress } from './lib/sentry.js';
+initSentry();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -39,6 +43,9 @@ app.use('/vouchers', vouchersRouter);
 app.use('/galleries', galleriesRouter);
 app.use('/support', supportRouter);
 
+// Sentry's error handler runs before our JSON renderer so it captures the
+// original exception with full Express context.
+attachSentryToExpress(app);
 app.use(errorHandler);
 
 app.listen(env.PORT, () => {

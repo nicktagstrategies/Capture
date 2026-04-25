@@ -42,6 +42,11 @@ final class SessionStore {
         refreshToken = session.refreshToken
         Keychain.write(key: .refreshToken, value: session.refreshToken)
         state = .signedIn(session.user)
+        Analytics.identify(userId: session.user.id, properties: [
+            "email": session.user.email,
+            "role": session.user.role,
+        ])
+        Analytics.capture(.authCompleted)
     }
 
     @MainActor
@@ -50,6 +55,7 @@ final class SessionStore {
         refreshToken = nil
         Keychain.delete(key: .refreshToken)
         state = .signedOut
+        Analytics.reset()
     }
 
     func refreshIfPossible() async -> Bool {

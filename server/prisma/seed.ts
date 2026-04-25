@@ -268,6 +268,8 @@ async function main() {
   const march = new Date();
   march.setMonth(march.getMonth() + 4);
 
+  // Seed vouchers go straight to `active`; production code path requires a
+  // confirmed Stripe PaymentIntent before status flips.
   await prisma.voucher.createMany({
     data: [
       {
@@ -276,6 +278,8 @@ async function main() {
         percentOff: 25,
         category: 'wedding_video',
         expiresAt: june,
+        status: 'active',
+        purchaseAmountCents: 0,
       },
       {
         senderId: friend.id,
@@ -283,6 +287,8 @@ async function main() {
         percentOff: 35,
         category: 'portrait',
         expiresAt: march,
+        status: 'active',
+        purchaseAmountCents: 0,
       },
     ],
     skipDuplicates: true,

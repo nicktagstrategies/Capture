@@ -43,6 +43,20 @@ stripeWebhookRouter.post(
       switch (event.type) {
         case 'payment_intent.succeeded': {
           const pi = event.data.object as Stripe.PaymentIntent;
+          // Two flavors of PaymentIntent flow through this app: booking
+          // payments and voucher purchases. Discriminate via metadata.kind.
+          if (pi.metadata?.kind === 'voucher_purchase') {
+            const voucher = await prisma.voucher.findUnique({
+              where: { purchaseStripePaymentIntentId: pi.id },
+            });
+            if (voucher && voucher.status === 'pending_payment') {
+              await prisma.voucher.update({
+                where: { id: voucher.id },
+                data: { status: 'active' },
+              });
+            }
+            break;
+          }
           const booking = await prisma.booking.findUnique({
             where: { stripePaymentIntentId: pi.id },
           });
@@ -60,7 +74,7 @@ stripeWebhookRouter.post(
               ? [
                   prisma.voucher.update({
                     where: { id: booking.voucherId },
-                    data: { redeemedAt: new Date() },
+                    data: { status: 'redeemed', redeemedAt: new Date() },
                   }),
                 ]
               : []),
@@ -70,6 +84,18 @@ stripeWebhookRouter.post(
         case 'payment_intent.payment_failed':
         case 'payment_intent.canceled': {
           const pi = event.data.object as Stripe.PaymentIntent;
+          if (pi.metadata?.kind === 'voucher_purchase') {
+            const voucher = await prisma.voucher.findUnique({
+              where: { purchaseStripePaymentIntentId: pi.id },
+            });
+            if (voucher && voucher.status === 'pending_payment') {
+              await prisma.voucher.update({
+                where: { id: voucher.id },
+                data: { status: 'voided' },
+              });
+            }
+            break;
+          }
           const booking = await prisma.booking.findUnique({
             where: { stripePaymentIntentId: pi.id },
           });

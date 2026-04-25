@@ -12,7 +12,7 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 | Q-PROD-2 | P0 | done | **Pre-booking discovery screen missing.** No portfolio/profile view between Home and Booking. | Resolved by `PhotographerProfileView`. |
 | Q-PROD-3 | P0 | open | **No customer↔photographer messaging.** | Need thread + message models, push targets, attachment support, read receipts. |
 | Q-PROD-4 | P0 | done | **Cancellation / reschedule flow.** | Refund policy in `services/refunds.ts`: full ≥48h, 50% in 24-48h, none <24h, full when photographer/platform cancels. Reschedule swaps the slot atomically. |
-| Q-PROD-5 | P0 | decided | **Voucher fraud vector — anyone can mint free percentage-off codes.** | Decision: split concept into (a) gift cards (sender pays), (b) promo codes (platform-issued). User-issued discounts will pay through Stripe at send time. |
+| Q-PROD-5 | P0 | done | **Voucher fraud — anyone could mint free percentage-off codes.** | Vouchers are now gift cards: sender pays via Stripe at send time, voucher status is `pending_payment` until `payment_intent.succeeded` flips it to `active`. Booking redemption only accepts `active`. Promo codes (platform-issued) tracked separately as Q-BIZ-4. |
 | Q-PROD-6 | P1 | open | Tipping post-session. | |
 | Q-PROD-7 | P1 | open | Customer favorites / "rebook same photographer". | |
 | Q-PROD-8 | P1 | open | Group bookings (photo + video same day). | |
@@ -96,8 +96,8 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 
 | ID | Priority | Status | Question / blindspot | Notes |
 |----|----------|--------|----------------------|-------|
-| Q-OBS-1 | P0 | open | Analytics SDK (Mixpanel / PostHog / Amplitude) for funnel tracking. | |
-| Q-OBS-2 | P0 | open | Crash reporting (Sentry on iOS + server). | |
+| Q-OBS-1 | P0 | done | Analytics SDK (PostHog) wired on iOS with funnel events: `app_opened`, `auth_completed`, `photographer_opened`, `booking_started`, `booking_payment_sheet_presented`, `booking_completed`, `booking_cancelled`, `gallery_opened`, `shared_gallery_link`, `support_ticket_submitted`. Server-side captures TBD. | |
+| Q-OBS-2 | P0 | done | Crash reporting via Sentry on both iOS (sentry-cocoa) and server (`@sentry/node`). Env-keyed; no-op without DSN. | |
 | Q-OBS-3 | P1 | open | Request ID correlation between iOS and server. | |
 | Q-OBS-4 | P1 | open | Webhook dead-letter queue + alerting. | |
 

@@ -38,6 +38,11 @@ final class BookingViewModel {
 
     func beginCheckout() async {
         guard let service = selectedService, let slot = selectedSlot else { return }
+        Analytics.capture(.bookingStarted, properties: [
+            "photographer_id": photographerId,
+            "service_id": service.id,
+            "subtotal_cents": service.priceCents,
+        ])
         do {
             // Stable per-attempt key. If the network drops mid-request and we retry,
             // the server replays the original outcome instead of double-charging.
@@ -51,6 +56,10 @@ final class BookingViewModel {
                 ),
                 headers: ["Idempotency-Key": idempotencyKey],
             )
+            Analytics.capture(.bookingPaymentSheetPresented, properties: [
+                "booking_id": resp.bookingId,
+                "total_cents": resp.totalCents,
+            ])
             StripeAPI.defaultPublishableKey = Config.stripePublishableKey
             var config = PaymentSheet.Configuration()
             config.merchantDisplayName = "Capture"
@@ -114,6 +123,7 @@ struct BookingView: View {
         ) { result in
             switch result {
             case .completed:
+                Analytics.capture(.bookingCompleted)
                 vm.bookingConfirmed = true
                 dismiss()
             case .canceled:

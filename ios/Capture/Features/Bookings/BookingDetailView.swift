@@ -43,10 +43,16 @@ final class BookingDetailViewModel {
             let refund: RefundPreview
         }
         do {
-            _ = try await APIClient.shared.post(
+            let resp: Resp = try await APIClient.shared.post(
                 "/bookings/\(bookingId)/cancel",
                 body: Body(reason: reason),
-            ) as Resp
+            )
+            Analytics.capture(.bookingCancelled, properties: [
+                "booking_id": resp.bookingId,
+                "cancelled_by": resp.cancelledBy,
+                "refund_rule": resp.refund.rule,
+                "refund_cents": resp.refund.refundCents,
+            ])
             await load()
         } catch {
             self.error = error.localizedDescription

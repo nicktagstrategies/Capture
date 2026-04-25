@@ -7,6 +7,8 @@ struct CaptureApp: App {
 
     init() {
         Appearance.configure()
+        Observability.bootstrap()
+        Analytics.capture(.appOpened)
     }
 
     var body: some Scene {

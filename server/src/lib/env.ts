@@ -36,6 +36,10 @@ const EnvSchema = z.object({
   S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
 
   SUPPORT_INBOX_EMAIL: z.string().email().default('support@capture.app'),
+
+  SENTRY_DSN: z.string().url().optional().or(z.literal('').transform(() => undefined)),
+  SENTRY_RELEASE: z.string().optional(),
+  SENTRY_ENVIRONMENT: z.string().default('development'),
 });
 
 function loadEnv() {

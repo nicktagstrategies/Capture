@@ -1,0 +1,17 @@
+// Capture — development build settings.
+// Fill in real values locally; never commit live keys here.
+
+// Google Sign-In iOS client (from Google Cloud Console).
+GOOGLE_IOS_CLIENT_ID =
+// Reversed form (only the second half), e.g. com.googleusercontent.apps.<id>.
+REVERSED_GOOGLE_IOS_CLIENT_ID =
+
+// Sentry — leave blank to disable; copy the iOS DSN from your Sentry project.
+SENTRY_DSN =
+
+// PostHog — leave blank to disable.
+POSTHOG_API_KEY =
+POSTHOG_HOST = https:/$()/us.i.posthog.com
+
+// Tags every Sentry/PostHog event with the build environment.
+APP_ENVIRONMENT = development

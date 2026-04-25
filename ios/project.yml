@@ -22,6 +22,12 @@ packages:
   Kingfisher:
     url: https://github.com/onevcat/Kingfisher
     from: "7.12.0"
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: "8.40.0"
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios
+    from: "3.15.0"
 
 targets:
   Capture:
@@ -38,6 +44,10 @@ targets:
       - package: GoogleSignIn
         product: GoogleSignIn
       - package: Kingfisher
+      - package: Sentry
+        product: Sentry
+      - package: PostHog
+        product: PostHog
     info:
       path: Capture/Resources/Info.plist
       properties:
@@ -57,6 +67,12 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(REVERSED_GOOGLE_IOS_CLIENT_ID)
+        # Observability — values come from Config-Dev.xcconfig / Config-Prod.xcconfig.
+        # Empty values short-circuit Sentry/PostHog init in Observability.swift.
+        SENTRY_DSN: $(SENTRY_DSN)
+        POSTHOG_API_KEY: $(POSTHOG_API_KEY)
+        POSTHOG_HOST: $(POSTHOG_HOST)
+        APP_ENVIRONMENT: $(APP_ENVIRONMENT)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.capture.app

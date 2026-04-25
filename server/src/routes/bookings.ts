@@ -57,10 +57,11 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
       let voucherPercentOff: number | undefined;
       if (body.voucherId) {
         const voucher = await tx.voucher.findUnique({ where: { id: body.voucherId } });
+        // Only `active` vouchers (= sender's payment cleared) can redeem.
         if (
           !voucher ||
           voucher.recipientId !== customerId ||
-          voucher.redeemedAt ||
+          voucher.status !== 'active' ||
           voucher.expiresAt < new Date()
         ) {
           throw new HttpError(400, 'Invalid voucher', 'invalid_voucher');

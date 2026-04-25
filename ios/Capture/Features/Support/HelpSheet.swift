@@ -44,6 +44,10 @@ final class HelpViewModel {
                 ),
             )
             sentTicketId = resp.id
+            Analytics.capture(.supportTicketSubmitted, properties: [
+                "category": category.rawValue,
+                "has_booking": bookingId != nil,
+            ])
         } catch {
             self.error = error.localizedDescription
         }

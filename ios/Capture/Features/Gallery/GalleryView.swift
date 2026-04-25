@@ -21,6 +21,10 @@ final class GalleryViewModel {
             let g: GalleryView = try await APIClient.shared.get("/galleries/\(galleryId)")
             gallery = g
             portfolioConsent = g.portfolioConsent
+            Analytics.capture(.galleryOpened, properties: [
+                "gallery_id": galleryId,
+                "item_count": g.items.count,
+            ])
         } catch {
             self.error = error.localizedDescription
         }
@@ -45,6 +49,7 @@ final class GalleryViewModel {
                 body: Empty(),
             )
             shareToken = resp.token
+            Analytics.capture(.sharedGalleryLink, properties: ["gallery_id": galleryId])
         } catch {
             self.error = error.localizedDescription
         }
