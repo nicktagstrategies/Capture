@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-// Override env BEFORE importing the module under test.
 vi.mock('../lib/env.js', () => ({
   env: {
     FLAT_CUSTOMER_FEE_CENTS: 150,
@@ -15,15 +14,13 @@ describe('computeFees', () => {
     vi.clearAllMocks();
   });
 
-  it('matches the Vallentyne screen numbers: $18 service -> $20.50 total', () => {
+  it('matches Vallentyne base case: $18 service -> $19.50 customer total + $3.30 platform take', () => {
     const fees = computeFees({ servicePriceCents: 1800 });
     expect(fees.subtotalCents).toBe(1800);
     expect(fees.customerFeeCents).toBe(150);
     expect(fees.commissionCents).toBe(180);
     expect(fees.totalCents).toBe(1950);
-    // Design shows $20.50; delta is because we start with a 10% commission.
-    // When commission = 0, totalCents = 1950 = $19.50. Adjust COMMISSION_RATE if needed.
-    expect(fees.applicationFeeCents).toBe(150 + 180);
+    expect(fees.applicationFeeCents).toBe(330);
   });
 
   it('applies voucher discount to subtotal before fees', () => {
@@ -34,9 +31,14 @@ describe('computeFees', () => {
     expect(fees.totalCents).toBe(7500 + 150);
   });
 
-  it('handles zero price gracefully', () => {
+  it('handles zero-priced service', () => {
     const fees = computeFees({ servicePriceCents: 0 });
     expect(fees.subtotalCents).toBe(0);
     expect(fees.totalCents).toBe(150);
+  });
+
+  it('rounds commission to nearest cent', () => {
+    const fees = computeFees({ servicePriceCents: 1799 });
+    expect(fees.commissionCents).toBe(180);
   });
 });

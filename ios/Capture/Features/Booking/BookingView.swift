@@ -34,9 +34,13 @@ final class BookingViewModel {
         }
     }
 
+    private var idempotencyKey = UUID().uuidString
+
     func beginCheckout() async {
         guard let service = selectedService, let slot = selectedSlot else { return }
         do {
+            // Stable per-attempt key. If the network drops mid-request and we retry,
+            // the server replays the original outcome instead of double-charging.
             let resp: BookingCreatedResponse = try await APIClient.shared.post(
                 "/bookings",
                 body: BookingRequest(
@@ -45,6 +49,7 @@ final class BookingViewModel {
                     voucherId: selectedVoucherId,
                     bookingAddress: nil,
                 ),
+                headers: ["Idempotency-Key": idempotencyKey],
             )
             StripeAPI.defaultPublishableKey = Config.stripePublishableKey
             var config = PaymentSheet.Configuration()
@@ -172,9 +177,25 @@ struct BookingView: View {
         }
     }
 
+    private var photographerTimeZone: TimeZone {
+        TimeZone(identifier: vm.detail?.timezone ?? "America/Los_Angeles") ?? .current
+    }
+
+    private var photographerCalendar: Calendar {
+        var cal = Calendar.current
+        cal.timeZone = photographerTimeZone
+        return cal
+    }
+
+    private func formatter(_ format: String) -> DateFormatter {
+        let f = DateFormatter()
+        f.dateFormat = format
+        f.timeZone = photographerTimeZone
+        return f
+    }
+
     private var monthTitle: String {
-        let f = DateFormatter(); f.dateFormat = "LLLL yyyy"
-        return f.string(from: vm.selectedSlot?.startsAt ?? Date())
+        formatter("LLLL yyyy").string(from: vm.selectedSlot?.startsAt ?? Date())
     }
 
     private var weekGrid: some View {
@@ -246,10 +267,10 @@ struct BookingView: View {
         (vm.selectedService?.priceCents ?? 0) + feeCents
     }
 
-    // MARK: - Day helpers
+    // MARK: - Day helpers (all calendar math happens in the photographer's TZ)
 
     private func uniqueDays(in slots: [Slot]) -> [Date] {
-        let cal = Calendar.current
+        let cal = photographerCalendar
         var seen = Set<DateComponents>()
         var days: [Date] = []
         for slot in slots {
@@ -261,32 +282,30 @@ struct BookingView: View {
 
     private var slotsOnSelectedDay: [Slot] {
         guard let day = vm.selectedSlot?.startsAt else { return [] }
-        let cal = Calendar.current
+        let cal = photographerCalendar
         return vm.slots.filter { cal.isDate($0.startsAt, inSameDayAs: day) }
     }
 
     private func isSelectedDay(_ date: Date) -> Bool {
         guard let selected = vm.selectedSlot?.startsAt else { return false }
-        return Calendar.current.isDate(date, inSameDayAs: selected)
+        return photographerCalendar.isDate(date, inSameDayAs: selected)
     }
 
     private func selectDay(_ date: Date) {
-        let cal = Calendar.current
+        let cal = photographerCalendar
         if let first = vm.slots.first(where: { cal.isDate($0.startsAt, inSameDayAs: date) }) {
             vm.selectedSlot = first
         }
     }
 
-    private func weekdayShort(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "EEE"; return f.string(from: date)
-    }
-
-    private func dayNumber(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "d"; return f.string(from: date)
-    }
+    private func weekdayShort(_ date: Date) -> String { formatter("EEE").string(from: date) }
+    private func dayNumber(_ date: Date) -> String { formatter("d").string(from: date) }
 
     private func timeString(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateStyle = .none; f.timeStyle = .short
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        f.timeZone = photographerTimeZone
         return f.string(from: date).lowercased()
     }
 }

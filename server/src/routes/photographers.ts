@@ -20,6 +20,7 @@ interface SearchRow {
   avatarUrl: string | null;
   heroImageUrl: string | null;
   homeCity: string;
+  timezone: string;
   bio: string | null;
   hourlyRateCents: number;
   avgRating: number;
@@ -39,6 +40,7 @@ photographersRouter.get('/', requireAuth, async (req, res, next) => {
         u."avatarUrl" AS "avatarUrl",
         p."heroImageUrl" AS "heroImageUrl",
         p."homeCity" AS "homeCity",
+        p.timezone,
         p.bio,
         p."hourlyRateCents" AS "hourlyRateCents",
         p."avgRating" AS "avgRating",
@@ -82,6 +84,7 @@ photographersRouter.get('/:id', requireAuth, async (req, res, next) => {
       avatarUrl: profile.user.avatarUrl,
       heroImageUrl: profile.heroImageUrl,
       homeCity: profile.homeCity,
+      timezone: profile.timezone,
       bio: profile.bio,
       hourlyRateCents: profile.hourlyRateCents,
       avgRating: profile.avgRating,

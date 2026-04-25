@@ -122,7 +122,7 @@ struct HomeView: View {
                 }
             }
             .navigationDestination(for: String.self) { photographerId in
-                BookingView(photographerId: photographerId)
+                PhotographerProfileView(photographerId: photographerId)
             }
         }
     }

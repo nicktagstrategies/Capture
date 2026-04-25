@@ -12,6 +12,8 @@ import { bookingsRouter } from './routes/bookings.js';
 import { vouchersRouter } from './routes/vouchers.js';
 import { configRouter } from './routes/config.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
+import { authRateLimit } from './middleware/rateLimit.js';
+import { startSlotSweeper } from './services/slotSweeper.js';
 
 const app = express();
 
@@ -27,7 +29,7 @@ app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-app.use('/auth', authRouter);
+app.use('/auth', authRateLimit, authRouter);
 app.use('/config', configRouter);
 app.use('/photographers', photographersRouter);
 app.use('/bookings', bookingsRouter);
@@ -37,4 +39,5 @@ app.use(errorHandler);
 
 app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Capture API listening');
+  startSlotSweeper();
 });

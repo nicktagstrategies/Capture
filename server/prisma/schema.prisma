@@ -87,6 +87,10 @@ model PhotographerProfile {
   verifiedAt        DateTime?
   avgRating         Float    @default(0)
   ratingCount       Int      @default(0)
+  // IANA tz, e.g. "America/Los_Angeles". Slot DateTimes are stored UTC; the app
+  // formats them in the photographer's timezone so "11:00 am" stays consistent
+  // regardless of where the customer travels from.
+  timezone          String   @default("America/Los_Angeles")
   // PostGIS point column is added via raw SQL migration; see migrations/ for details.
   // Prisma cannot model the GEOGRAPHY type directly, so it lives unmanaged.
   createdAt         DateTime @default(now())
@@ -234,4 +238,30 @@ model RefreshToken {
   createdAt  DateTime @default(now())
 
   @@index([userId])
+}
+
+/// Stripe event IDs we've already processed. Stripe retries on 5xx and may
+/// deliver the same event multiple times; we no-op on replays.
+model WebhookEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  type          String
+  processedAt   DateTime @default(now())
+}
+
+/// Idempotency cache for unsafe endpoints. Clients send `Idempotency-Key`;
+/// the server stores the response keyed by (userId, key) so retries replay
+/// the original outcome instead of double-charging.
+model IdempotencyKey {
+  id           String   @id @default(cuid())
+  userId       String
+  key          String
+  method       String
+  path         String
+  statusCode   Int
+  responseBody String   // serialized JSON
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([createdAt])
 }

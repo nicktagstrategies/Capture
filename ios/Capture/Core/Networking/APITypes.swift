@@ -28,6 +28,7 @@ struct PhotographerCard: Codable, Identifiable, Hashable {
     let avatarUrl: String?
     let heroImageUrl: String?
     let homeCity: String
+    let timezone: String
     let bio: String?
     let hourlyRateCents: Int
     let avgRating: Double
@@ -54,6 +55,7 @@ struct PhotographerDetail: Codable, Identifiable, Hashable {
     let avatarUrl: String?
     let heroImageUrl: String?
     let homeCity: String
+    let timezone: String
     let bio: String?
     let hourlyRateCents: Int
     let avgRating: Double
@@ -90,6 +92,7 @@ struct BookingSummary: Codable, Identifiable, Hashable {
         let name: String
         let avatarUrl: String?
         let homeCity: String
+        let timezone: String
     }
     struct ServiceRef: Codable, Hashable { let title: String }
 

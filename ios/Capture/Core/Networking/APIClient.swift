@@ -45,10 +45,15 @@ final class APIClient {
         try await perform(request(path: path, method: "GET", query: query))
     }
 
-    func post<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
+    func post<Body: Encodable, T: Decodable>(
+        _ path: String,
+        body: Body,
+        headers: [String: String] = [:],
+    ) async throws -> T {
         var req = request(path: path, method: "POST")
         req.httpBody = try encoder.encode(body)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
         return try await perform(req)
     }
 

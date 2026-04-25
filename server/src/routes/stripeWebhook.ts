@@ -26,6 +26,19 @@ stripeWebhookRouter.post(
       return;
     }
 
+    // Stripe retries on 5xx and may deliver duplicates. Persist the event ID
+    // on first sight; replays short-circuit. The unique constraint on
+    // stripeEventId makes the dedupe race-free.
+    try {
+      await prisma.webhookEvent.create({
+        data: { stripeEventId: event.id, type: event.type },
+      });
+    } catch {
+      logger.debug({ id: event.id }, 'duplicate stripe event ignored');
+      res.json({ received: true, deduped: true });
+      return;
+    }
+
     try {
       switch (event.type) {
         case 'payment_intent.succeeded': {
@@ -76,6 +89,8 @@ stripeWebhookRouter.post(
       res.json({ received: true });
     } catch (err) {
       logger.error({ err, type: event.type }, 'error handling stripe event');
+      // Roll back the dedupe record so Stripe's retry can try us again.
+      await prisma.webhookEvent.delete({ where: { stripeEventId: event.id } }).catch(() => {});
       res.status(500).send('handler error');
     }
   },

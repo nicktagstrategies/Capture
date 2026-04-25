@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// All seed photographers live in California → the Prisma default
+// (`America/Los_Angeles`) already applies. When we expand to other regions,
+// add `timezone` here and pass it through in `prisma.photographerProfile.upsert`.
 type SeedPhotographer = {
   email: string;
   name: string;

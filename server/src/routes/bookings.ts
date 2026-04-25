@@ -4,9 +4,13 @@ import { prisma } from '../lib/prisma.js';
 import { stripe } from '../lib/stripe.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { idempotent } from '../middleware/idempotency.js';
+import { bookingRateLimit } from '../middleware/rateLimit.js';
 import { computeFees } from '../services/payments.js';
 
 export const bookingsRouter = Router();
+
+const HOLD_WINDOW_MS = 15 * 60 * 1000;
 
 const CreateBookingBody = z.object({
   serviceId: z.string().min(1),
@@ -15,17 +19,27 @@ const CreateBookingBody = z.object({
   bookingAddress: z.string().max(300).optional(),
 });
 
-bookingsRouter.post('/', requireAuth, async (req, res, next) => {
+bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req, res, next) => {
   try {
     const body = CreateBookingBody.parse(req.body);
     const customerId = req.userId!;
 
     const booking = await prisma.$transaction(async (tx) => {
-      const slot = await tx.availabilitySlot.findUnique({ where: { id: body.slotId } });
-      if (!slot || slot.status !== 'open') {
+      // Atomic reservation: only succeeds if the slot is still 'open'.
+      // updateMany returns the affected row count without throwing on no-match,
+      // which is exactly the "compare-and-swap" we need for concurrent bookers.
+      const reservation = await tx.availabilitySlot.updateMany({
+        where: { id: body.slotId, status: 'open' },
+        data: {
+          status: 'held',
+          heldUntil: new Date(Date.now() + HOLD_WINDOW_MS),
+        },
+      });
+      if (reservation.count === 0) {
         throw new HttpError(409, 'Slot no longer available', 'slot_unavailable');
       }
 
+      const slot = await tx.availabilitySlot.findUniqueOrThrow({ where: { id: body.slotId } });
       const service = await tx.service.findUnique({
         where: { id: body.serviceId },
         include: { photographer: true },
@@ -56,15 +70,6 @@ bookingsRouter.post('/', requireAuth, async (req, res, next) => {
         voucherPercentOff,
       });
 
-      // Reserve the slot so nobody else can grab it while the client completes payment.
-      await tx.availabilitySlot.update({
-        where: { id: slot.id },
-        data: {
-          status: 'held',
-          heldUntil: new Date(Date.now() + 15 * 60 * 1000),
-        },
-      });
-
       return await tx.booking.create({
         data: {
           customerId,
@@ -86,43 +91,19 @@ bookingsRouter.post('/', requireAuth, async (req, res, next) => {
       });
     });
 
-    // Create the Stripe Connect PaymentIntent. `application_fee_amount` is what
-    // Capture keeps; the rest is auto-transferred to the photographer's Connect account.
-    if (!booking.photographer.stripeAccountId) {
-      // For the MVP/seed photographers we don't have real Connect accounts, so we
-      // create a regular PaymentIntent and reconcile payouts manually. Switch to
-      // transfer_data once each photographer finishes onboarding.
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: booking.totalCents,
-        currency: 'usd',
-        metadata: { bookingId: booking.id },
-        automatic_payment_methods: { enabled: true },
-      });
-      await prisma.booking.update({
-        where: { id: booking.id },
-        data: {
-          stripePaymentIntentId: paymentIntent.id,
-          stripeClientSecret: paymentIntent.client_secret,
-        },
-      });
-      res.status(201).json({
-        bookingId: booking.id,
-        clientSecret: paymentIntent.client_secret,
-        totalCents: booking.totalCents,
-      });
-      return;
-    }
+    const applicationFee = booking.customerFeeCents + booking.commissionCents;
+    const transferData = booking.photographer.stripeAccountId
+      ? { transfer_data: { destination: booking.photographer.stripeAccountId }, application_fee_amount: applicationFee }
+      : {};
 
-    const applicationFee =
-      booking.customerFeeCents + booking.commissionCents;
     const paymentIntent = await stripe.paymentIntents.create({
       amount: booking.totalCents,
       currency: 'usd',
-      application_fee_amount: applicationFee,
-      transfer_data: { destination: booking.photographer.stripeAccountId },
-      metadata: { bookingId: booking.id },
+      metadata: { bookingId: booking.id, customerId },
       automatic_payment_methods: { enabled: true },
+      ...transferData,
     });
+
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
@@ -163,6 +144,7 @@ bookingsRouter.get('/', requireAuth, async (req, res, next) => {
           name: b.photographer.user.name,
           avatarUrl: b.photographer.user.avatarUrl,
           homeCity: b.photographer.homeCity,
+          timezone: b.photographer.timezone,
         },
         service: { title: b.service.title },
       })),
