@@ -41,4 +41,34 @@ describe('computeFees', () => {
     const fees = computeFees({ servicePriceCents: 1799 });
     expect(fees.commissionCents).toBe(180);
   });
+
+  it('applies referral credit, capped at the application fee, and reduces total + applicationFee equally', () => {
+    // $18 service: gross app fee = $1.50 + $1.80 = $3.30
+    // Available credit $10 → caps at $3.30 so the platform never goes negative.
+    const fees = computeFees({
+      servicePriceCents: 1800,
+      availableReferralCreditCents: 1000,
+    });
+    expect(fees.referralCreditAppliedCents).toBe(330);
+    expect(fees.totalCents).toBe(1950 - 330);
+    expect(fees.applicationFeeCents).toBe(0);
+    // Photographer take is `total - applicationFee` (= subtotal - commission)
+    // and is unchanged by credit because credit reduces both equally.
+    expect(fees.totalCents - fees.applicationFeeCents).toBe(fees.subtotalCents - fees.commissionCents);
+  });
+
+  it('applies a partial credit without burning the full balance', () => {
+    const fees = computeFees({
+      servicePriceCents: 5000,
+      availableReferralCreditCents: 200,
+    });
+    expect(fees.referralCreditAppliedCents).toBe(200);
+    expect(fees.totalCents).toBe(5000 + 150 - 200);
+  });
+
+  it('treats no credit as zero', () => {
+    const fees = computeFees({ servicePriceCents: 1800 });
+    expect(fees.referralCreditAppliedCents).toBe(0);
+    expect(fees.totalCents).toBe(1950);
+  });
 });

@@ -6,8 +6,36 @@ import { HttpError } from '../middleware/errorHandler.js';
 import { consumeRefreshToken, issueRefreshToken, signAccessToken } from '../services/tokens.js';
 import { verifyAppleIdToken } from '../services/appleAuth.js';
 import { verifyGoogleIdToken } from '../services/googleAuth.js';
+import { mintReferralCodeForUser, claimReferralCode } from '../services/referrals.js';
+import { logger } from '../lib/logger.js';
 
 export const authRouter = Router();
+
+/**
+ * Best-effort: assign a referral code if the user doesn't have one yet, and
+ * (if a referrer code was passed) record the inbound referral. We swallow
+ * errors here so a flaky referral system never blocks signup — referrals are
+ * a nice-to-have, sessions are core.
+ */
+async function attachReferralArtifacts(userId: string, claimedCode: string | undefined) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referralCode: true },
+    });
+    if (!user?.referralCode) {
+      await mintReferralCodeForUser(userId);
+    }
+    if (claimedCode) {
+      const result = await claimReferralCode(userId, claimedCode);
+      if (!result.ok) {
+        logger.info({ userId, reason: result.reason }, 'referral claim rejected');
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, userId }, 'attachReferralArtifacts failed');
+  }
+}
 
 async function issueSessionForUser(userId: string) {
   const [accessToken, refreshToken] = await Promise.all([
@@ -31,6 +59,7 @@ const EmailSignupBody = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
   name: z.string().min(1).max(80),
+  referralCode: z.string().min(1).max(20).optional(),
 });
 
 authRouter.post('/email/signup', async (req, res, next) => {
@@ -45,6 +74,7 @@ authRouter.post('/email/signup', async (req, res, next) => {
         passwordHash: await bcrypt.hash(body.password, 10),
       },
     });
+    await attachReferralArtifacts(user.id, body.referralCode);
     const session = await issueSessionForUser(user.id);
     res.status(201).json({ ...session, user: userToSession(user) });
   } catch (err) {
@@ -64,6 +94,8 @@ authRouter.post('/email/login', async (req, res, next) => {
     if (!user?.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
       throw new HttpError(401, 'Invalid email or password', 'invalid_credentials');
     }
+    // Backfill referral code for legacy accounts that signed up before codes existed.
+    await attachReferralArtifacts(user.id, undefined);
     const session = await issueSessionForUser(user.id);
     res.json({ ...session, user: userToSession(user) });
   } catch (err) {
@@ -74,6 +106,7 @@ authRouter.post('/email/login', async (req, res, next) => {
 const AppleBody = z.object({
   idToken: z.string().min(1),
   name: z.string().optional(),
+  referralCode: z.string().min(1).max(20).optional(),
 });
 
 authRouter.post('/apple', async (req, res, next) => {
@@ -89,6 +122,7 @@ authRouter.post('/apple', async (req, res, next) => {
         name: body.name ?? 'Capture User',
       },
     });
+    await attachReferralArtifacts(user.id, body.referralCode);
     const session = await issueSessionForUser(user.id);
     res.json({ ...session, user: userToSession(user) });
   } catch (err) {
@@ -96,7 +130,10 @@ authRouter.post('/apple', async (req, res, next) => {
   }
 });
 
-const GoogleBody = z.object({ idToken: z.string().min(1) });
+const GoogleBody = z.object({
+  idToken: z.string().min(1),
+  referralCode: z.string().min(1).max(20).optional(),
+});
 
 authRouter.post('/google', async (req, res, next) => {
   try {
@@ -115,6 +152,7 @@ authRouter.post('/google', async (req, res, next) => {
         avatarUrl: claims.picture ?? null,
       },
     });
+    await attachReferralArtifacts(user.id, body.referralCode);
     const session = await issueSessionForUser(user.id);
     res.json({ ...session, user: userToSession(user) });
   } catch (err) {

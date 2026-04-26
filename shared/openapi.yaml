@@ -222,6 +222,39 @@ paths:
       summary: Send a voucher to another user
       responses:
         '201': { description: Created }
+  /referrals/me:
+    get:
+      summary: Caller's referral code, credit balance, and referrals-sent count
+      responses:
+        '200':
+          description: Referral status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferralStatus' }
+  /referrals/claim:
+    post:
+      summary: Claim a referral code (awards credit to both sides)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '201':
+          description: Claim succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creditCents: { type: integer }
+                  referrerId: { type: string }
+        '400': { description: Unknown code or self-referral }
+        '409': { description: User already claimed a referral }
   /messages/{bookingId}:
     get:
       summary: Fetch the full message thread for a booking
@@ -389,6 +422,12 @@ components:
         amountCents: { type: integer }
         status: { type: string, enum: [pending_payment, paid, voided] }
         paidAt: { type: string, format: date-time, nullable: true }
+    ReferralStatus:
+      type: object
+      properties:
+        code: { type: string }
+        creditCents: { type: integer }
+        referralsSent: { type: integer }
     Message:
       type: object
       properties:

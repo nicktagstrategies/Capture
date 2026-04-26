@@ -96,6 +96,16 @@ enum TipStatus {
   voided
 }
 
+enum ReferralStatus {
+  /// Code shared but recipient hasn't claimed yet (no row exists in this state today;
+  /// reserved for outbound-email flows where we mint a Referral before signup).
+  pending
+  /// Recipient signed up + claimed; both sides got credit.
+  signed_up
+  /// Recipient redeemed credit on a booking.
+  redeemed
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -105,6 +115,13 @@ model User {
   appleSub      String?  @unique
   googleSub     String?  @unique
   passwordHash  String?
+
+  /// 6-char alphanumeric code other users can paste to give us both credit.
+  /// Nullable for backfill — existing users get one minted on next sign-in.
+  referralCode        String?  @unique
+  /// Unspent referral credit, in cents. Decremented when applied to a booking.
+  referralCreditCents Int      @default(0)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -116,6 +133,8 @@ model User {
   devices             Device[]
   refreshTokens       RefreshToken[]
   supportTickets      SupportTicket[]
+  referralsSent       Referral[]         @relation("Referrer")
+  referralsReceived   Referral[]         @relation("Referee")
 
   @@index([role])
 }
@@ -413,6 +432,28 @@ model MessageThread {
 
   @@index([customerId])
   @@index([photographerId])
+}
+
+/// "Give $10, get $10": a referrer's code is claimed by a referee on signup
+/// (or shortly after). Both sides get `creditCents` added to their balance.
+/// Booking checkout auto-applies available credit, capped at the booking's
+/// platform application fee so Capture never loses cash on a single booking.
+model Referral {
+  id              String         @id @default(cuid())
+  referrerId      String
+  referrer        User           @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId       String?
+  referee         User?          @relation("Referee", fields: [refereeId], references: [id], onDelete: SetNull)
+  refereeEmail    String?        // populated for outbound-email referrals before signup
+  code            String         // snapshot of referrer.referralCode at claim time
+  creditCents     Int            @default(1000)
+  status          ReferralStatus @default(signed_up)
+  redeemedBookingId String?
+  createdAt       DateTime       @default(now())
+  redeemedAt      DateTime?
+
+  @@index([referrerId])
+  @@index([refereeId])
 }
 
 /// Optional gratuity attached to a completed booking. 100% goes to the

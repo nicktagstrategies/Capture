@@ -84,6 +84,7 @@ struct BookingCreatedResponse: Codable {
     let bookingId: String
     let clientSecret: String
     let totalCents: Int
+    let referralCreditAppliedCents: Int?
 }
 
 struct BookingSummary: Codable, Identifiable, Hashable {
@@ -181,6 +182,17 @@ struct TipCreatedResponse: Codable {
     let tipId: String
     let clientSecret: String
     let amountCents: Int
+}
+
+struct ReferralStatusResponse: Codable, Hashable {
+    let code: String
+    let creditCents: Int
+    let referralsSent: Int
+}
+
+struct ReferralClaimResponse: Codable, Hashable {
+    let creditCents: Int
+    let referrerId: String
 }
 
 struct GalleryItem: Codable, Identifiable, Hashable {

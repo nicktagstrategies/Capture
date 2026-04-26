@@ -33,6 +33,11 @@ const EnvSchema = z.object({
   TIP_MIN_CENTS: z.coerce.number().int().positive().default(100),
   TIP_MAX_CENTS: z.coerce.number().int().positive().default(50_000),
 
+  // Referral economics. Each side of a successful referral gets this credit;
+  // booking checkout caps applied credit at the booking's platform fee so the
+  // marketplace never loses cash on a single booking.
+  REFERRAL_CREDIT_CENTS: z.coerce.number().int().positive().default(1000),
+
   S3_REGION: z.string().default('us-west-2'),
   S3_BUCKET: z.string().optional(),
   S3_ENDPOINT: z.string().url().optional().or(z.literal('').transform(() => undefined)),

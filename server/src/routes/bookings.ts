@@ -27,7 +27,7 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
     const body = CreateBookingBody.parse(req.body);
     const customerId = req.userId!;
 
-    const booking = await prisma.$transaction(async (tx) => {
+    const { booking, referralCreditApplied } = await prisma.$transaction(async (tx) => {
       // Atomic reservation: only succeeds if the slot is still 'open'.
       // updateMany returns the affected row count without throwing on no-match,
       // which is exactly the "compare-and-swap" we need for concurrent bookers.
@@ -69,12 +69,20 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
         voucherPercentOff = voucher.percentOff;
       }
 
+      // Pull the customer's referral balance inside the transaction so two
+      // concurrent bookings can't both spend the same credit dollar.
+      const customer = await tx.user.findUniqueOrThrow({
+        where: { id: customerId },
+        select: { referralCreditCents: true },
+      });
+
       const fees = computeFees({
         servicePriceCents: service.priceCents,
         voucherPercentOff,
+        availableReferralCreditCents: customer.referralCreditCents,
       });
 
-      return await tx.booking.create({
+      const created = await tx.booking.create({
         data: {
           customerId,
           photographerId: service.photographerId,
@@ -84,7 +92,7 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
           subtotalCents: fees.subtotalCents,
           customerFeeCents: fees.customerFeeCents,
           commissionCents: fees.commissionCents,
-          discountCents: fees.discountCents,
+          discountCents: fees.discountCents + fees.referralCreditAppliedCents,
           totalCents: fees.totalCents,
           bookingAddress: body.bookingAddress ?? null,
           startsAt: slot.startsAt,
@@ -93,9 +101,22 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
         },
         include: { photographer: true },
       });
+
+      if (fees.referralCreditAppliedCents > 0) {
+        await tx.user.update({
+          where: { id: customerId },
+          data: { referralCreditCents: { decrement: fees.referralCreditAppliedCents } },
+        });
+      }
+
+      return { booking: created, referralCreditApplied: fees.referralCreditAppliedCents };
     });
 
-    const applicationFee = booking.customerFeeCents + booking.commissionCents;
+    // Referral credit reduces both the customer's charge AND the platform's
+    // application fee by the same amount, so the photographer's net take
+    // (= amount - application_fee_amount) is unchanged. Capture absorbs the
+    // credit by giving up its own take.
+    const applicationFee = booking.customerFeeCents + booking.commissionCents - referralCreditApplied;
     const transferData = booking.photographer.stripeAccountId
       ? { transfer_data: { destination: booking.photographer.stripeAccountId }, application_fee_amount: applicationFee }
       : {};
@@ -103,7 +124,11 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
     const paymentIntent = await stripe.paymentIntents.create({
       amount: booking.totalCents,
       currency: 'usd',
-      metadata: { bookingId: booking.id, customerId },
+      metadata: {
+        bookingId: booking.id,
+        customerId,
+        referralCreditAppliedCents: String(referralCreditApplied),
+      },
       automatic_payment_methods: { enabled: true },
       ...transferData,
     });
@@ -120,6 +145,7 @@ bookingsRouter.post('/', bookingRateLimit, requireAuth, idempotent(), async (req
       bookingId: booking.id,
       clientSecret: paymentIntent.client_secret,
       totalCents: booking.totalCents,
+      referralCreditAppliedCents: referralCreditApplied,
     });
   } catch (err) {
     next(err);

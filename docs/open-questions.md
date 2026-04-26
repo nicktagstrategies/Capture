@@ -88,7 +88,7 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 |----|----------|--------|----------------------|-------|
 | Q-BIZ-1 | P0 | open | Cold-start liquidity plan (city, # seed photographers, acquisition lever). | San Diego is the seed assumption. |
 | Q-BIZ-2 | P0 | open | Take-rate sanity check at low ticket sizes (Stripe fee ~$0.90 on $20). | Consider minimum booking value or tiered fee. |
-| Q-BIZ-3 | P1 | open | Referral program (sender/recipient credit). | Vouchers screen is the visual hook. |
+| Q-BIZ-3 | P1 | in-progress | **Referral program** ($10 give / $10 get). Each user gets a 6-char code (32-char alphabet, no I/O/0/1) minted on first session. `POST /referrals/claim` awards credit to both sides; booking checkout auto-applies available credit, capped at the booking's platform application fee so Capture never goes negative on a single booking. iOS Profile section shows code + balance + share sheet. | Universal-link `/r/[code]` and email-referral flows wait for the marketing site (M7). |
 | Q-BIZ-4 | P1 | open | Promo codes (platform-issued, distinct from gift cards). | See Q-PROD-5. |
 | Q-BIZ-5 | P1 | open | ASO + App Store screenshots + press kit. | |
 

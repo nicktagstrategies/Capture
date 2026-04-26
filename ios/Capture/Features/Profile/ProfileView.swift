@@ -12,6 +12,7 @@ struct ProfileView: View {
                         LabeledContent("Email", value: user.email)
                         LabeledContent("Role", value: user.role.capitalized)
                     }
+                    ReferralSection()
                 }
                 Section {
                     Button("Sign out", role: .destructive) {

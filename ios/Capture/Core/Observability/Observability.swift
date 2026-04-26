@@ -71,6 +71,8 @@ enum AnalyticsEvent: String {
     case messageSent = "message_sent"
     case tipStarted = "tip_started"
     case tipCompleted = "tip_completed"
+    case referralCodeShared = "referral_code_shared"
+    case referralCodeClaimed = "referral_code_claimed"
 }
 
 enum Analytics {
