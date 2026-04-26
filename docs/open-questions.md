@@ -101,6 +101,7 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 | Q-OBS-2 | P0 | done | Crash reporting via Sentry on both iOS (sentry-cocoa) and server (`@sentry/node`). Env-keyed; no-op without DSN. | |
 | Q-OBS-3 | P1 | open | Request ID correlation between iOS and server. | |
 | Q-OBS-4 | P1 | open | Webhook dead-letter queue + alerting. | |
+| Q-OBS-5 | P0 | in-progress | **Push notification dispatcher.** `Notification` audit table + provider abstraction (no-op when APNs env keys absent). Hooked into booking-confirmed (Stripe webhook), message-received (POST /messages), gallery-delivered (finalize). | Real APNs HTTP/2 + ES256 transport is the next step — provider stub currently logs and marks rows `sent`. |
 
 ## Security
 

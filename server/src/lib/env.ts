@@ -50,6 +50,15 @@ const EnvSchema = z.object({
   SENTRY_DSN: z.string().url().optional().or(z.literal('').transform(() => undefined)),
   SENTRY_RELEASE: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().default('development'),
+
+  // APNs auth-key flow. All four must be present together; if any are blank
+  // the push dispatcher logs + marks the notification `skipped`. Use the
+  // sandbox host in dev / TestFlight.
+  APNS_BUNDLE_ID: z.string().optional().or(z.literal('').transform(() => undefined)),
+  APNS_TEAM_ID: z.string().optional().or(z.literal('').transform(() => undefined)),
+  APNS_KEY_ID: z.string().optional().or(z.literal('').transform(() => undefined)),
+  APNS_PRIVATE_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
+  APNS_HOST: z.enum(['api.push.apple.com', 'api.sandbox.push.apple.com']).default('api.sandbox.push.apple.com'),
 });
 
 function loadEnv() {

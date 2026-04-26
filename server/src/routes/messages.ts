@@ -7,6 +7,7 @@ import {
   SendMessageBody,
   ShareLocationBody,
 } from '../services/messaging.js';
+import { dispatchPush } from '../services/notifications.js';
 
 export const messagesRouter = Router();
 
@@ -118,6 +119,18 @@ messagesRouter.post('/:bookingId', requireAuth, async (req, res, next) => {
       data: { lastMessageAt: message.createdAt },
     });
 
+    // Notify whoever is on the other end; never block the response.
+    const recipientId = req.userId! === booking.customerId
+      ? booking.photographer.userId
+      : booking.customerId;
+    void dispatchPush({
+      recipientId,
+      kind: 'message_received',
+      title: 'New message',
+      body: body.body ? truncatePreview(body.body, 80) : 'Sent you a photo',
+      payload: { bookingId: booking.id, threadId: thread.id, messageId: message.id },
+    });
+
     res.status(201).json({
       id: message.id,
       threadId: thread.id,
@@ -132,6 +145,10 @@ messagesRouter.post('/:bookingId', requireAuth, async (req, res, next) => {
     next(err);
   }
 });
+
+function truncatePreview(text: string, max: number): string {
+  return text.length <= max ? text : text.slice(0, max - 1) + '…';
+}
 
 /**
  * POST /messages/:bookingId/share-location

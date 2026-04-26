@@ -4,6 +4,7 @@ import { stripe } from '../lib/stripe.js';
 import { env } from '../lib/env.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
+import { dispatchPush } from '../services/notifications.js';
 
 export const stripeWebhookRouter = Router();
 
@@ -71,6 +72,7 @@ stripeWebhookRouter.post(
           }
           const booking = await prisma.booking.findUnique({
             where: { stripePaymentIntentId: pi.id },
+            include: { photographer: { select: { userId: true } } },
           });
           if (!booking) break;
           await prisma.$transaction([
@@ -91,6 +93,21 @@ stripeWebhookRouter.post(
                 ]
               : []),
           ]);
+          // Notify both sides; never block the webhook ack on this.
+          void dispatchPush({
+            recipientId: booking.customerId,
+            kind: 'booking_confirmed',
+            title: 'Booking confirmed',
+            body: 'Your photographer is locked in. Tap to see the details.',
+            payload: { bookingId: booking.id },
+          });
+          void dispatchPush({
+            recipientId: booking.photographer.userId,
+            kind: 'booking_confirmed',
+            title: 'New booking',
+            body: 'A new session is on your calendar. Tap to see the details.',
+            payload: { bookingId: booking.id },
+          });
           break;
         }
         case 'payment_intent.payment_failed':

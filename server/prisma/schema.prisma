@@ -106,6 +106,23 @@ enum ReferralStatus {
   redeemed
 }
 
+enum NotificationKind {
+  booking_confirmed
+  booking_cancelled
+  message_received
+  gallery_delivered
+  voucher_received
+  tip_paid
+  review_received
+}
+
+enum NotificationStatus {
+  queued     // freshly created, not yet attempted
+  sent       // delivered to APNs
+  skipped    // no provider config or no devices
+  failed     // provider returned an error
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -135,6 +152,7 @@ model User {
   supportTickets      SupportTicket[]
   referralsSent       Referral[]         @relation("Referrer")
   referralsReceived   Referral[]         @relation("Referee")
+  notifications       Notification[]
 
   @@index([role])
 }
@@ -475,6 +493,27 @@ model Tip {
   paidAt                DateTime?
 
   @@index([photographerId, status])
+}
+
+/// Audit row for every push we attempt to send. Kept around for debugging
+/// (why didn't the customer get a buzz?), retry logic later, and analytics.
+/// `payload` is the iOS-side data dictionary; the actual APNs `aps` body is
+/// computed at send time so we can re-template it without a migration.
+model Notification {
+  id           String             @id @default(cuid())
+  recipientId  String
+  recipient    User               @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  kind         NotificationKind
+  title        String
+  body         String
+  payload      Json               @default("{}")
+  status       NotificationStatus @default(queued)
+  errorReason  String?
+  createdAt    DateTime           @default(now())
+  sentAt       DateTime?
+
+  @@index([recipientId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Message {

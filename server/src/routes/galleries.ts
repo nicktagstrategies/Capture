@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { newGalleryItemKey, presignDownload, presignUpload, deleteObject } from '../lib/storage.js';
+import { dispatchPush } from '../services/notifications.js';
 
 export const galleriesRouter = Router();
 
@@ -110,6 +111,21 @@ galleriesRouter.post('/:id/items/:itemId/finalize', requireAuth, async (req, res
         where: { id: gallery.id },
         data: { status: 'delivered', deliveredAt: new Date() },
       });
+      // Surface "your photos are ready" to the customer. We re-fetch the
+      // booking inside the dispatch path; failure is non-fatal.
+      const booking = await prisma.booking.findUnique({
+        where: { id: gallery.bookingId },
+        select: { customerId: true },
+      });
+      if (booking) {
+        void dispatchPush({
+          recipientId: booking.customerId,
+          kind: 'gallery_delivered',
+          title: 'Your photos are ready',
+          body: 'Tap to view, share, or download your gallery.',
+          payload: { bookingId: gallery.bookingId, galleryId: gallery.id },
+        });
+      }
     }
     res.json({ ok: true });
   } catch (err) {
