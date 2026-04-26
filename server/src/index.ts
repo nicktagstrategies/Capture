@@ -21,6 +21,7 @@ import { supportRouter } from './routes/support.js';
 import { messagesRouter } from './routes/messages.js';
 import { tipsRouter } from './routes/tips.js';
 import { referralsRouter } from './routes/referrals.js';
+import { reviewsRouter } from './routes/reviews.js';
 import { authRateLimit } from './middleware/rateLimit.js';
 import { startSlotSweeper } from './services/slotSweeper.js';
 
@@ -49,6 +50,7 @@ app.use('/galleries', galleriesRouter);
 app.use('/support', supportRouter);
 app.use('/messages', messagesRouter);
 app.use('/referrals', referralsRouter);
+app.use('/reviews', reviewsRouter);
 
 // Sentry's error handler runs before our JSON renderer so it captures the
 // original exception with full Express context.

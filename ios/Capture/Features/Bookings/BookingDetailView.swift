@@ -111,6 +111,16 @@ struct BookingDetailView: View {
                     } else if let tip = d.tip, tip.status == "paid" {
                         tipPaidBanner(amountCents: tip.amountCents)
                     }
+                    if shouldOfferReview(detail: d) {
+                        NavigationLink {
+                            ReviewPromptView(bookingId: d.id, photographerName: d.photographer.name)
+                        } label: {
+                            reviewCallout
+                        }
+                        .buttonStyle(.plain)
+                    } else if let review = d.review {
+                        reviewPostedBanner(rating: review.rating)
+                    }
                     receipt(detail: d)
                     actionButtons(detail: d)
                     if let cancelledAt = d.cancelledAt {
@@ -206,6 +216,46 @@ struct BookingDetailView: View {
         guard detail.tip == nil || detail.tip?.status == "voided" else { return false }
         let sessionLooksDone = detail.gallery?.status == "delivered" || detail.status == "completed"
         return sessionLooksDone
+    }
+
+    /// Same gating as tipping — both prompts share the "session is done" signal.
+    private func shouldOfferReview(detail: BookingDetail) -> Bool {
+        guard detail.role == "customer" else { return false }
+        guard detail.review == nil else { return false }
+        return detail.gallery?.status == "delivered" || detail.status == "completed"
+    }
+
+    private var reviewCallout: some View {
+        HStack {
+            Image(systemName: "star.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(Color.capturePink)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Leave a review").font(.captureBodyStrong).foregroundStyle(Color.captureInk)
+                Text("Help other customers find a great photographer").font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(Color.captureInkMuted)
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+    }
+
+    private func reviewPostedBanner(rating: Int) -> some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { star in
+                Image(systemName: rating >= star ? "star.fill" : "star")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.capturePink)
+            }
+            Text("Review posted").font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.capturePink.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var tipCallout: some View {

@@ -222,6 +222,40 @@ paths:
       summary: Send a voucher to another user
       responses:
         '201': { description: Created }
+  /reviews:
+    post:
+      summary: Customer leaves a 1–5 star review for their booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookingId, rating]
+              properties:
+                bookingId: { type: string }
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                body: { type: string, maxLength: 2000 }
+      responses:
+        '201': { description: Review created }
+        '409': { description: Booking already reviewed or not eligible }
+  /photographers/{id}/reviews:
+    get:
+      summary: Recent reviews for a photographer profile
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        '200':
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items: { $ref: '#/components/schemas/Review' }
   /referrals/me:
     get:
       summary: Caller's referral code, credit balance, and referrals-sent count
@@ -428,6 +462,20 @@ components:
         code: { type: string }
         creditCents: { type: integer }
         referralsSent: { type: integer }
+    Review:
+      type: object
+      properties:
+        id: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        body: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        serviceTitle: { type: string }
+        sessionDate: { type: string, format: date-time }
+        customer:
+          type: object
+          properties:
+            name: { type: string }
+            avatarUrl: { type: string, nullable: true }
     Message:
       type: object
       properties:

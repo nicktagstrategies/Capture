@@ -5,6 +5,7 @@ import Kingfisher
 final class PhotographerProfileViewModel {
     let photographerId: String
     var detail: PhotographerDetail?
+    var reviews: [PhotographerReview] = []
     var error: String?
     var isLoading = false
 
@@ -16,7 +17,12 @@ final class PhotographerProfileViewModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            detail = try await APIClient.shared.get("/photographers/\(photographerId)")
+            // Fire detail + reviews in parallel; treat reviews-load failure as
+            // non-fatal (the profile is still useful without them).
+            async let detailFetch: PhotographerDetail = APIClient.shared.get("/photographers/\(photographerId)")
+            async let reviewsFetch: PhotographerReviewsResponse = APIClient.shared.get("/photographers/\(photographerId)/reviews")
+            self.detail = try await detailFetch
+            self.reviews = (try? await reviewsFetch)?.reviews ?? []
             Analytics.capture(.photographerOpened, properties: ["photographer_id": photographerId])
         } catch {
             self.error = error.localizedDescription
@@ -130,13 +136,45 @@ struct PhotographerProfileView: View {
         }
     }
 
-    /// Reviews list placeholder; wired to real `/photographers/:id/reviews` in M4.
     private var reviewsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Reviews").font(.captureSectionHeader).foregroundStyle(Color.captureInk)
-            Text("Reviews appear here once customers complete sessions.")
-                .font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            if vm.reviews.isEmpty {
+                Text("Reviews appear here once customers complete sessions.")
+                    .font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            } else {
+                ForEach(vm.reviews) { review in
+                    reviewCard(review: review)
+                }
+            }
         }
+    }
+
+    private func reviewCard(review: PhotographerReview) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                ForEach(1...5, id: \.self) { star in
+                    Image(systemName: review.rating >= star ? "star.fill" : "star")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.capturePink)
+                }
+                Spacer()
+                Text(review.sessionDate, style: .date)
+                    .font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            }
+            if let body = review.body {
+                Text(body).font(.captureBody).foregroundStyle(Color.captureInk)
+            }
+            HStack(spacing: 6) {
+                Text(review.customer.name).font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+                Text("·").foregroundStyle(Color.captureInkMuted)
+                Text(review.serviceTitle).font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            }
+        }
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 
     private var bookCTA: some View {

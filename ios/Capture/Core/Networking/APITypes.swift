@@ -131,6 +131,30 @@ struct TipRef: Codable, Hashable {
     let paidAt: Date?
 }
 
+struct ReviewRef: Codable, Hashable {
+    let id: String
+    let rating: Int
+    let createdAt: Date
+}
+
+struct PhotographerReview: Codable, Identifiable, Hashable {
+    struct CustomerRef: Codable, Hashable {
+        let name: String
+        let avatarUrl: String?
+    }
+    let id: String
+    let rating: Int
+    let body: String?
+    let createdAt: Date
+    let serviceTitle: String
+    let sessionDate: Date
+    let customer: CustomerRef
+}
+
+struct PhotographerReviewsResponse: Codable {
+    let reviews: [PhotographerReview]
+}
+
 struct BookingDetail: Codable, Identifiable, Hashable {
     struct PhotographerRef: Codable, Hashable {
         let id: String
@@ -160,6 +184,7 @@ struct BookingDetail: Codable, Identifiable, Hashable {
     let service: ServiceRef
     let gallery: GalleryRef?
     let tip: TipRef?
+    let review: ReviewRef?
     let refundPreview: RefundPreview
     let role: String
 }

@@ -127,3 +127,45 @@ photographersRouter.get('/:id/availability', requireAuth, async (req, res, next)
     next(err);
   }
 });
+
+const ReviewsQuery = z.object({
+  limit: z.coerce.number().int().positive().max(50).default(20),
+});
+
+photographersRouter.get('/:id/reviews', requireAuth, async (req, res, next) => {
+  try {
+    const q = ReviewsQuery.parse(req.query);
+    // The Review table joins to Booking, which joins to the customer's User.
+    // We avoid leaking the customer's email by only selecting name + avatar.
+    const reviews = await prisma.review.findMany({
+      where: { booking: { photographerId: req.params.id } },
+      orderBy: { createdAt: 'desc' },
+      take: q.limit,
+      include: {
+        booking: {
+          select: {
+            customer: { select: { name: true, avatarUrl: true } },
+            service: { select: { title: true } },
+            startsAt: true,
+          },
+        },
+      },
+    });
+    res.json({
+      reviews: reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        body: r.body,
+        createdAt: r.createdAt,
+        customer: {
+          name: r.booking.customer.name,
+          avatarUrl: r.booking.customer.avatarUrl,
+        },
+        serviceTitle: r.booking.service.title,
+        sessionDate: r.booking.startsAt,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
