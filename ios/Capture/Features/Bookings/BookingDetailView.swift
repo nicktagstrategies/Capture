@@ -101,6 +101,16 @@ struct BookingDetailView: View {
                         messageCallout(role: d.role)
                     }
                     .buttonStyle(.plain)
+                    if shouldOfferTip(detail: d) {
+                        NavigationLink {
+                            TipView(bookingId: d.id, photographerName: d.photographer.name)
+                        } label: {
+                            tipCallout
+                        }
+                        .buttonStyle(.plain)
+                    } else if let tip = d.tip, tip.status == "paid" {
+                        tipPaidBanner(amountCents: tip.amountCents)
+                    }
                     receipt(detail: d)
                     actionButtons(detail: d)
                     if let cancelledAt = d.cancelledAt {
@@ -184,6 +194,50 @@ struct BookingDetailView: View {
         .padding(16)
         .background(Color.captureBlue.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Tipping is offered to the customer once the photographer has delivered
+    /// the photos (gallery status: delivered). We anchor on gallery delivery
+    /// rather than booking status because "completed" depends on a webhook
+    /// that may lag, but a delivered gallery is unambiguous social proof the
+    /// session happened.
+    private func shouldOfferTip(detail: BookingDetail) -> Bool {
+        guard detail.role == "customer" else { return false }
+        guard detail.tip == nil || detail.tip?.status == "voided" else { return false }
+        let sessionLooksDone = detail.gallery?.status == "delivered" || detail.status == "completed"
+        return sessionLooksDone
+    }
+
+    private var tipCallout: some View {
+        HStack {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(Color.capturePink)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Add a tip").font(.captureBodyStrong).foregroundStyle(Color.captureInk)
+                Text("100% goes to the photographer").font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(Color.captureInkMuted)
+        }
+        .padding(16)
+        .background(Color.capturePink.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func tipPaidBanner(amountCents: Int) -> some View {
+        HStack {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(Color.capturePink)
+            Text("Tipped \(formatCurrency(amountCents))")
+                .font(.captureBodyStrong)
+                .foregroundStyle(Color.captureInk)
+            Spacer()
+        }
+        .padding(14)
+        .background(Color.capturePink.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func messageCallout(role: String) -> some View {

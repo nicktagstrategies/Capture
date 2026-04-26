@@ -13,7 +13,7 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 | Q-PROD-3 | P0 | in-progress | **Customer↔photographer messaging.** Thread per booking, text + image attachments, ephemeral live-location pin, polling-based delivery; locks 7 days post-completion. | V1 ships polling; WebSocket transport + APNs fan-out + read receipts UI follow up. |
 | Q-PROD-4 | P0 | done | **Cancellation / reschedule flow.** | Refund policy in `services/refunds.ts`: full ≥48h, 50% in 24-48h, none <24h, full when photographer/platform cancels. Reschedule swaps the slot atomically. |
 | Q-PROD-5 | P0 | done | **Voucher fraud — anyone could mint free percentage-off codes.** | Vouchers are now gift cards: sender pays via Stripe at send time, voucher status is `pending_payment` until `payment_intent.succeeded` flips it to `active`. Booking redemption only accepts `active`. Promo codes (platform-issued) tracked separately as Q-BIZ-4. |
-| Q-PROD-6 | P1 | open | Tipping post-session. | |
+| Q-PROD-6 | P1 | in-progress | **Tipping post-session.** Customer-only `POST /bookings/:id/tip` creates a Stripe PaymentIntent that routes 100% to the photographer (no platform fee). Suggestions are 10/15/20% of subtotal, rounded to whole dollars, with a custom field. Floor/ceiling are env-tunable to stop typo $0.01 / $5,000 charges. | Push trigger 1h post-session is a follow-up (needs BullMQ). |
 | Q-PROD-7 | P1 | open | Customer favorites / "rebook same photographer". | |
 | Q-PROD-8 | P1 | open | Group bookings (photo + video same day). | |
 | Q-PROD-9 | P1 | open | Two-sided ratings (photographer rates customer). | Helps deter no-shows and harassers. |

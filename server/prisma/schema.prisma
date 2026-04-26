@@ -87,6 +87,15 @@ enum VoucherStatus {
   voided
 }
 
+enum TipStatus {
+  /// PaymentIntent created; waiting for client confirmation + webhook.
+  pending_payment
+  /// Tip cleared; photographer has been credited.
+  paid
+  /// Stripe canceled or failed the PaymentIntent; tip is dead.
+  voided
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -221,6 +230,7 @@ model Booking {
   review                 Review?
   gallery                Gallery?
   messageThread          MessageThread?
+  tip                    Tip?
 
   // Cancellation bookkeeping. cancelledBy + reason help support and analytics;
   // refundAmountCents records what we actually returned to the customer once
@@ -403,6 +413,27 @@ model MessageThread {
 
   @@index([customerId])
   @@index([photographerId])
+}
+
+/// Optional gratuity attached to a completed booking. 100% goes to the
+/// photographer — Capture takes no platform cut on tips. Stored as a separate
+/// PaymentIntent so it can be charged at a different time than the booking
+/// (and so the original booking's refund/transfer logic isn't entangled with
+/// tip dollars).
+model Tip {
+  id                    String    @id @default(cuid())
+  bookingId             String    @unique
+  booking               Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId            String
+  photographerId        String   // PhotographerProfile.id
+  amountCents           Int
+  status                TipStatus @default(pending_payment)
+  stripePaymentIntentId String?   @unique
+  stripeClientSecret    String?
+  createdAt             DateTime  @default(now())
+  paidAt                DateTime?
+
+  @@index([photographerId, status])
 }
 
 model Message {

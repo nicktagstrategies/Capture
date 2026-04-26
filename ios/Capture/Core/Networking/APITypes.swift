@@ -123,6 +123,13 @@ struct RefundPreview: Codable, Hashable {
     let rule: String
 }
 
+struct TipRef: Codable, Hashable {
+    let id: String
+    let amountCents: Int
+    let status: String
+    let paidAt: Date?
+}
+
 struct BookingDetail: Codable, Identifiable, Hashable {
     struct PhotographerRef: Codable, Hashable {
         let id: String
@@ -151,8 +158,29 @@ struct BookingDetail: Codable, Identifiable, Hashable {
     let photographer: PhotographerRef
     let service: ServiceRef
     let gallery: GalleryRef?
+    let tip: TipRef?
     let refundPreview: RefundPreview
     let role: String
+}
+
+struct TipSuggestion: Codable, Hashable, Identifiable {
+    let percent: Int
+    let amountCents: Int
+    var id: Int { percent }
+}
+
+struct TipSuggestionsResponse: Codable {
+    let bookingId: String
+    let subtotalCents: Int
+    let minCents: Int
+    let maxCents: Int
+    let suggestions: [TipSuggestion]
+}
+
+struct TipCreatedResponse: Codable {
+    let tipId: String
+    let clientSecret: String
+    let amountCents: Int
 }
 
 struct GalleryItem: Codable, Identifiable, Hashable {

@@ -172,6 +172,7 @@ bookingsRouter.get('/:id', requireAuth, async (req, res, next) => {
         photographer: { include: { user: { select: { name: true, avatarUrl: true } } } },
         service: true,
         gallery: { select: { id: true, status: true, deliveredAt: true } },
+        tip: { select: { id: true, amountCents: true, status: true, paidAt: true } },
       },
     });
     if (!booking) throw new HttpError(404, 'Booking not found', 'not_found');
@@ -213,6 +214,14 @@ bookingsRouter.get('/:id', requireAuth, async (req, res, next) => {
       },
       gallery: booking.gallery
         ? { id: booking.gallery.id, status: booking.gallery.status, deliveredAt: booking.gallery.deliveredAt }
+        : null,
+      tip: booking.tip
+        ? {
+            id: booking.tip.id,
+            amountCents: booking.tip.amountCents,
+            status: booking.tip.status,
+            paidAt: booking.tip.paidAt,
+          }
         : null,
       refundPreview,
       role: isPhotographer ? 'photographer' : 'customer',

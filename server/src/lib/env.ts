@@ -28,6 +28,11 @@ const EnvSchema = z.object({
   HOURS_FOR_PARTIAL_REFUND: z.coerce.number().nonnegative().default(24),
   PARTIAL_REFUND_RATE: z.coerce.number().min(0).max(1).default(0.5),
 
+  // Tipping caps. Floor stops typo $0.01 tips; ceiling stops accidental
+  // $5,000 tips when someone fat-fingers the custom field.
+  TIP_MIN_CENTS: z.coerce.number().int().positive().default(100),
+  TIP_MAX_CENTS: z.coerce.number().int().positive().default(50_000),
+
   S3_REGION: z.string().default('us-west-2'),
   S3_BUCKET: z.string().optional(),
   S3_ENDPOINT: z.string().url().optional().or(z.literal('').transform(() => undefined)),

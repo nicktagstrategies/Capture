@@ -19,6 +19,7 @@ import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { galleriesRouter } from './routes/galleries.js';
 import { supportRouter } from './routes/support.js';
 import { messagesRouter } from './routes/messages.js';
+import { tipsRouter } from './routes/tips.js';
 import { authRateLimit } from './middleware/rateLimit.js';
 import { startSlotSweeper } from './services/slotSweeper.js';
 
@@ -39,7 +40,9 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/auth', authRateLimit, authRouter);
 app.use('/config', configRouter);
 app.use('/photographers', photographersRouter);
-app.use('/bookings', bookingsRouter);
+// Tips are scoped to a booking, so mount tipsRouter under /bookings to share
+// the URL prefix (`POST /bookings/:id/tip`).
+app.use('/bookings', bookingsRouter, tipsRouter);
 app.use('/vouchers', vouchersRouter);
 app.use('/galleries', galleriesRouter);
 app.use('/support', supportRouter);

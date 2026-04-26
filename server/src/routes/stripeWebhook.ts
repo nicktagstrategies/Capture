@@ -43,8 +43,8 @@ stripeWebhookRouter.post(
       switch (event.type) {
         case 'payment_intent.succeeded': {
           const pi = event.data.object as Stripe.PaymentIntent;
-          // Two flavors of PaymentIntent flow through this app: booking
-          // payments and voucher purchases. Discriminate via metadata.kind.
+          // Three flavors of PaymentIntent flow through this app: booking
+          // payments, voucher purchases, and tips. Discriminate via metadata.kind.
           if (pi.metadata?.kind === 'voucher_purchase') {
             const voucher = await prisma.voucher.findUnique({
               where: { purchaseStripePaymentIntentId: pi.id },
@@ -53,6 +53,18 @@ stripeWebhookRouter.post(
               await prisma.voucher.update({
                 where: { id: voucher.id },
                 data: { status: 'active' },
+              });
+            }
+            break;
+          }
+          if (pi.metadata?.kind === 'tip') {
+            const tip = await prisma.tip.findUnique({
+              where: { stripePaymentIntentId: pi.id },
+            });
+            if (tip && tip.status === 'pending_payment') {
+              await prisma.tip.update({
+                where: { id: tip.id },
+                data: { status: 'paid', paidAt: new Date() },
               });
             }
             break;
@@ -91,6 +103,18 @@ stripeWebhookRouter.post(
             if (voucher && voucher.status === 'pending_payment') {
               await prisma.voucher.update({
                 where: { id: voucher.id },
+                data: { status: 'voided' },
+              });
+            }
+            break;
+          }
+          if (pi.metadata?.kind === 'tip') {
+            const tip = await prisma.tip.findUnique({
+              where: { stripePaymentIntentId: pi.id },
+            });
+            if (tip && tip.status === 'pending_payment') {
+              await prisma.tip.update({
+                where: { id: tip.id },
                 data: { status: 'voided' },
               });
             }

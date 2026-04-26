@@ -149,6 +149,61 @@ paths:
                   bookingId: { type: string }
                   clientSecret: { type: string }
                   totalCents: { type: integer }
+  /bookings/{id}/tip:
+    post:
+      summary: Tip the photographer for a confirmed/completed booking
+      description: |
+        Creates a Stripe PaymentIntent that routes 100% to the photographer
+        (no platform fee). Returns the client secret so iOS can present
+        PaymentSheet. Tip is unique per booking.
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountCents]
+              properties:
+                amountCents: { type: integer, minimum: 1 }
+      responses:
+        '201':
+          description: Tip created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tipId: { type: string }
+                  clientSecret: { type: string }
+                  amountCents: { type: integer }
+        '200':
+          description: Existing pending tip — returns the same client secret so the sheet can resume
+        '409':
+          description: Booking ineligible (not confirmed, already tipped, etc.)
+  /bookings/{id}/tip-suggestions:
+    get:
+      summary: Canonical tip suggestion amounts for a booking
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200':
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookingId: { type: string }
+                  subtotalCents: { type: integer }
+                  minCents: { type: integer }
+                  maxCents: { type: integer }
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        percent: { type: integer }
+                        amountCents: { type: integer }
   /vouchers:
     get:
       summary: Vouchers received by the current user
@@ -327,6 +382,13 @@ components:
             id: { type: string }
             name: { type: string }
             avatarUrl: { type: string, nullable: true }
+    Tip:
+      type: object
+      properties:
+        id: { type: string }
+        amountCents: { type: integer }
+        status: { type: string, enum: [pending_payment, paid, voided] }
+        paidAt: { type: string, format: date-time, nullable: true }
     Message:
       type: object
       properties:
