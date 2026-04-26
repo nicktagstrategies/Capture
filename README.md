@@ -61,8 +61,10 @@ Apple **does not** take a cut — photography sessions are physical services del
 See `/root/.claude/plans/steady-sprouting-octopus.md` for the full milestone plan.
 
 - **M1** Foundation + scheduled booking flow end-to-end
-- **M2** Vouchers + bookings management
-- **M3** Photographer side (onboarding, availability, earnings)
-- **M4** Reviews + polish
-- **M5** On-demand mode
-- **M6** Launch prep (live Stripe, TestFlight)
+- **M2** Vouchers, bookings management, in-app messaging, cancellation policy
+- **M3** Photographer side + trust/KYC (Stripe Identity, Checkr, calendar sync)
+- **M4** Photo delivery + galleries (watermarked previews, license uplift, download)
+- **M5** Reviews, tipping, referrals
+- **M6** On-demand mode
+- **M7** Marketing site (`web/marketing/`) + admin dashboard (`web/admin/`)
+- **M8** Launch prep (live Stripe, App Store, TestFlight)

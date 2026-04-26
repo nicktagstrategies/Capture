@@ -10,7 +10,7 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 |----|----------|--------|----------------------|-------|
 | Q-PROD-1 | P0 | done | **Photo delivery.** Gallery model, S3-presigned uploads, delivered-status promotion, public share-link tokens, customer consent toggle for portfolio use. | V1 ships full-res only (no watermark/proof tier); thumbnails + derivatives are a follow-up worker task. |
 | Q-PROD-2 | P0 | done | **Pre-booking discovery screen missing.** No portfolio/profile view between Home and Booking. | Resolved by `PhotographerProfileView`. |
-| Q-PROD-3 | P0 | open | **No customer↔photographer messaging.** | Need thread + message models, push targets, attachment support, read receipts. |
+| Q-PROD-3 | P0 | in-progress | **Customer↔photographer messaging.** Thread per booking, text + image attachments, ephemeral live-location pin, polling-based delivery; locks 7 days post-completion. | V1 ships polling; WebSocket transport + APNs fan-out + read receipts UI follow up. |
 | Q-PROD-4 | P0 | done | **Cancellation / reschedule flow.** | Refund policy in `services/refunds.ts`: full ≥48h, 50% in 24-48h, none <24h, full when photographer/platform cancels. Reschedule swaps the slot atomically. |
 | Q-PROD-5 | P0 | done | **Voucher fraud — anyone could mint free percentage-off codes.** | Vouchers are now gift cards: sender pays via Stripe at send time, voucher status is `pending_payment` until `payment_intent.succeeded` flips it to `active`. Booking redemption only accepts `active`. Promo codes (platform-issued) tracked separately as Q-BIZ-4. |
 | Q-PROD-6 | P1 | open | Tipping post-session. | |
@@ -96,7 +96,7 @@ Status legend: `open`, `in-progress`, `decided`, `done`.
 
 | ID | Priority | Status | Question / blindspot | Notes |
 |----|----------|--------|----------------------|-------|
-| Q-OBS-1 | P0 | done | Analytics SDK (PostHog) wired on iOS with funnel events: `app_opened`, `auth_completed`, `photographer_opened`, `booking_started`, `booking_payment_sheet_presented`, `booking_completed`, `booking_cancelled`, `gallery_opened`, `shared_gallery_link`, `support_ticket_submitted`. Server-side captures TBD. | |
+| Q-OBS-1 | P0 | done | Analytics SDK (PostHog) wired on iOS with funnel events: `app_opened`, `auth_completed`, `photographer_opened`, `booking_started`, `booking_payment_sheet_presented`, `booking_completed`, `booking_cancelled`, `gallery_opened`, `shared_gallery_link`, `support_ticket_submitted`, `message_sent`. Server-side captures TBD. | |
 | Q-OBS-2 | P0 | done | Crash reporting via Sentry on both iOS (sentry-cocoa) and server (`@sentry/node`). Env-keyed; no-op without DSN. | |
 | Q-OBS-3 | P1 | open | Request ID correlation between iOS and server. | |
 | Q-OBS-4 | P1 | open | Webhook dead-letter queue + alerting. | |

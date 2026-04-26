@@ -220,6 +220,7 @@ model Booking {
 
   review                 Review?
   gallery                Gallery?
+  messageThread          MessageThread?
 
   // Cancellation bookkeeping. cancelledBy + reason help support and analytics;
   // refundAmountCents records what we actually returned to the customer once
@@ -383,4 +384,41 @@ model SupportTicket {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+/// Per-booking message thread between customer and photographer. Auto-created
+/// on first send so we don't have to backfill threads for every booking.
+/// Locked once the booking has been completed for a week (enforced in the
+/// route, not at the DB layer).
+model MessageThread {
+  id              String    @id @default(cuid())
+  bookingId       String    @unique
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId      String
+  photographerId  String   // PhotographerProfile.id, not User.id
+  lastMessageAt   DateTime?
+  createdAt       DateTime  @default(now())
+
+  messages        Message[]
+
+  @@index([customerId])
+  @@index([photographerId])
+}
+
+model Message {
+  id                  String        @id @default(cuid())
+  threadId            String
+  thread              MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId            String        // User.id of whoever sent it
+  body                String?       // text body; null when message is purely an attachment or location pin
+  attachmentUrl       String?       // S3 URL once uploaded; presigned at read time
+  attachmentMime      String?
+  // Ephemeral location pin: lat/lng valid only until locationExpiresAt.
+  locationLat         Float?
+  locationLng         Float?
+  locationExpiresAt   DateTime?
+  createdAt           DateTime      @default(now())
+  readAt              DateTime?
+
+  @@index([threadId, createdAt])
 }

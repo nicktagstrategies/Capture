@@ -202,3 +202,29 @@ struct ConfigResponse: Codable {
     let flatCustomerFeeCents: Int
     let commissionRate: Double
 }
+
+struct MessageLocation: Codable, Hashable {
+    let lat: Double
+    let lng: Double
+    let expiresAt: Date
+}
+
+struct Message: Codable, Identifiable, Hashable {
+    let id: String
+    let threadId: String?
+    let senderId: String
+    let body: String?
+    let attachmentUrl: String?
+    let attachmentMime: String?
+    let location: MessageLocation?
+    let createdAt: Date
+    let readAt: Date?
+    let isMine: Bool
+}
+
+struct MessageThreadResponse: Codable, Hashable {
+    let bookingId: String
+    let threadId: String?
+    let locked: Bool
+    let messages: [Message]
+}

@@ -68,6 +68,7 @@ enum AnalyticsEvent: String {
     case galleryOpened = "gallery_opened"
     case sharedGalleryLink = "shared_gallery_link"
     case supportTicketSubmitted = "support_ticket_submitted"
+    case messageSent = "message_sent"
 }
 
 enum Analytics {

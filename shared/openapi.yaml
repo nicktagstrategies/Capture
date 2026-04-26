@@ -167,6 +167,67 @@ paths:
       summary: Send a voucher to another user
       responses:
         '201': { description: Created }
+  /messages/{bookingId}:
+    get:
+      summary: Fetch the full message thread for a booking
+      description: |
+        Returns the transcript between customer and photographer.
+        Side-effect: marks the caller's unread inbound messages as read.
+      parameters: [ { name: bookingId, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200':
+          description: Thread transcript
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageThread' }
+    post:
+      summary: Send a message in a booking thread (lazy-creates the thread)
+      parameters: [ { name: bookingId, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body: { type: string, maxLength: 2000 }
+                attachmentUrl: { type: string, format: uri }
+                attachmentMime: { type: string }
+              description: At least one of `body` or `attachmentUrl` is required.
+      responses:
+        '201':
+          description: Message created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '409':
+          description: Thread is locked (booking completed >7 days ago)
+  /messages/{bookingId}/share-location:
+    post:
+      summary: Drop an ephemeral location pin into the thread
+      parameters: [ { name: bookingId, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lng]
+              properties:
+                lat: { type: number, minimum: -90, maximum: 90 }
+                lng: { type: number, minimum: -180, maximum: 180 }
+                durationSeconds:
+                  type: integer
+                  minimum: 1
+                  maximum: 14400
+                  default: 1800
+                  description: How long the pin stays "live"; capped at 4 hours.
+      responses:
+        '201':
+          description: Pin created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
 
 components:
   securitySchemes:
@@ -266,6 +327,34 @@ components:
             id: { type: string }
             name: { type: string }
             avatarUrl: { type: string, nullable: true }
+    Message:
+      type: object
+      properties:
+        id: { type: string }
+        threadId: { type: string }
+        senderId: { type: string }
+        body: { type: string, nullable: true }
+        attachmentUrl: { type: string, nullable: true }
+        attachmentMime: { type: string, nullable: true }
+        location:
+          nullable: true
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+            expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time, nullable: true }
+        isMine: { type: boolean }
+    MessageThread:
+      type: object
+      properties:
+        bookingId: { type: string }
+        threadId: { type: string, nullable: true }
+        locked: { type: boolean }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/Message' }
 
 security:
   - bearerAuth: []

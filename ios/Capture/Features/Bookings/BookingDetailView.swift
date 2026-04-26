@@ -95,6 +95,12 @@ struct BookingDetailView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    NavigationLink {
+                        ThreadView(bookingId: d.id)
+                    } label: {
+                        messageCallout(role: d.role)
+                    }
+                    .buttonStyle(.plain)
                     receipt(detail: d)
                     actionButtons(detail: d)
                     if let cancelledAt = d.cancelledAt {
@@ -178,6 +184,26 @@ struct BookingDetailView: View {
         .padding(16)
         .background(Color.captureBlue.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func messageCallout(role: String) -> some View {
+        HStack {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(Color.captureBlue)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(role == "photographer" ? "Message customer" : "Message photographer")
+                    .font(.captureBodyStrong).foregroundStyle(Color.captureInk)
+                Text("Coordinate logistics, share location, send updates")
+                    .font(.captureCaption).foregroundStyle(Color.captureInkMuted)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(Color.captureInkMuted)
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 
     private func receipt(detail: BookingDetail) -> some View {
