@@ -167,6 +167,13 @@ model PhotographerProfile {
   heroImageUrl      String?
   hourlyRateCents   Int      @default(0)
   stripeAccountId   String?  @unique
+  /// Set on first call to POST /me/photographer/onboarding/start. A non-null
+  /// value here without `onboardingCompletedAt` means the user is mid-Stripe.
+  onboardingStartedAt   DateTime?
+  /// Set when Stripe's `account.updated` webhook reports the account is fully
+  /// chargeable + payable. Search and search-result eligibility key off this
+  /// (we don't show photographers who haven't finished onboarding).
+  onboardingCompletedAt DateTime?
   verifiedAt        DateTime?
   avgRating         Float    @default(0)
   ratingCount       Int      @default(0)

@@ -12,6 +12,20 @@ struct ProfileView: View {
                         LabeledContent("Email", value: user.email)
                         LabeledContent("Role", value: user.role.capitalized)
                     }
+                    Section("Photographer") {
+                        // The role string is the source of truth — `customer`
+                        // hasn't started onboarding yet; `photographer` and
+                        // `both` already have a profile and dashboard.
+                        if user.role == "customer" {
+                            NavigationLink("Become a photographer") {
+                                PhotographerOnboardingView()
+                            }
+                        } else {
+                            NavigationLink("Photographer dashboard") {
+                                PhotographerDashboardView()
+                            }
+                        }
+                    }
                     ReferralSection()
                 }
                 Section {

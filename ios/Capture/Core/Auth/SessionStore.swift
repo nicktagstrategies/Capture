@@ -49,6 +49,24 @@ final class SessionStore {
         Analytics.capture(.authCompleted)
     }
 
+    /// Bumps the in-memory user's role without re-issuing tokens. Called after
+    /// the photographer-onboarding webhook fires (real or dev-bypass): the JWT
+    /// stays valid, but the UI needs the new role to render the dashboard
+    /// instead of the customer view.
+    @MainActor
+    func updateUserRole(_ newRole: String) {
+        guard case .signedIn(let user) = state else { return }
+        let updated = SessionUser(
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: newRole,
+            avatarUrl: user.avatarUrl,
+        )
+        state = .signedIn(updated)
+        Analytics.identify(userId: updated.id, properties: ["role": newRole])
+    }
+
     @MainActor
     func signOut() {
         accessToken = nil

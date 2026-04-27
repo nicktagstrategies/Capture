@@ -293,3 +293,74 @@ struct MessageThreadResponse: Codable, Hashable {
     let locked: Bool
     let messages: [Message]
 }
+
+// MARK: - Photographer onboarding (M3)
+
+struct OnboardingStartResponse: Codable {
+    let stripeAccountId: String
+    let accountLinkUrl: String
+    let expiresAt: Date
+}
+
+struct PhotographerMe: Codable, Hashable {
+    let id: String
+    let userId: String
+    let bio: String?
+    let homeCity: String
+    let homeAddress: String?
+    let heroImageUrl: String?
+    let hourlyRateCents: Int
+    let timezone: String
+    let stripeAccountId: String?
+    let onboardingStartedAt: Date?
+    let onboardingCompletedAt: Date?
+    let avgRating: Double
+    let ratingCount: Int
+}
+
+struct PhotographerProfilePatch: Codable {
+    var bio: String?
+    var homeCity: String?
+    var homeAddress: String?
+    var heroImageUrl: String?
+    var hourlyRateCents: Int?
+    var timezone: String?
+}
+
+struct ServiceUpsert: Codable {
+    var title: String
+    var description: String?
+    var durationMinutes: Int
+    var priceCents: Int
+    var category: String
+    var active: Bool?
+}
+
+struct OwnedService: Codable, Identifiable, Hashable {
+    let id: String
+    let title: String
+    let description: String?
+    let durationMinutes: Int
+    let priceCents: Int
+    let category: String
+    let active: Bool
+}
+
+struct OwnedSlot: Codable, Identifiable, Hashable {
+    let id: String
+    let startsAt: Date
+    let endsAt: Date
+    let status: String
+}
+
+struct OwnedSlotsResponse: Codable {
+    let slots: [OwnedSlot]
+}
+
+struct CreateSlotsBody: Codable {
+    struct SlotInput: Codable, Hashable {
+        let startsAt: Date
+        let endsAt: Date
+    }
+    let slots: [SlotInput]
+}

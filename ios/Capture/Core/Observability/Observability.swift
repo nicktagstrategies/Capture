@@ -74,6 +74,10 @@ enum AnalyticsEvent: String {
     case referralCodeShared = "referral_code_shared"
     case referralCodeClaimed = "referral_code_claimed"
     case reviewSubmitted = "review_submitted"
+    case photographerOnboardingStarted = "photographer_onboarding_started"
+    case photographerOnboardingCompleted = "photographer_onboarding_completed"
+    case photographerServiceCreated = "photographer_service_created"
+    case photographerSlotsCreated = "photographer_slots_created"
 }
 
 enum Analytics {

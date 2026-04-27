@@ -59,6 +59,18 @@ const EnvSchema = z.object({
   APNS_KEY_ID: z.string().optional().or(z.literal('').transform(() => undefined)),
   APNS_PRIVATE_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
   APNS_HOST: z.enum(['api.push.apple.com', 'api.sandbox.push.apple.com']).default('api.sandbox.push.apple.com'),
+
+  // Stripe Connect dev bypass — when true, the connect helper returns a stub
+  // accountId + redirect URL instead of hitting Stripe. Lets devs iterate on
+  // photographer onboarding without a Connect-enabled Stripe account. The
+  // stripe webhook handler also fakes an `account.updated` event after a
+  // short delay so the iOS dashboard transitions correctly.
+  STRIPE_CONNECT_DEV_BYPASS: z.coerce.boolean().default(false),
+  // Public host the iOS app uses as the return URL for Stripe Connect onboarding.
+  // Stripe redirects here at the end of the hosted flow; the iOS app intercepts
+  // the URL via the `capture://` scheme and re-polls /me/photographer.
+  STRIPE_CONNECT_RETURN_URL: z.string().default('capture://onboarding/return'),
+  STRIPE_CONNECT_REFRESH_URL: z.string().default('capture://onboarding/refresh'),
 });
 
 function loadEnv() {

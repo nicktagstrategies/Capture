@@ -68,6 +68,36 @@ final class APIClient {
         try await perform(request(path: path, method: "DELETE"))
     }
 
+    /// Void-returning delete for endpoints that respond 204 with an empty
+    /// body. Avoids forcing callers to invent a Decodable empty struct.
+    func delete(_ path: String) async throws {
+        try await performVoid(request(path: path, method: "DELETE"))
+    }
+
+    private func performVoid(_ request: URLRequest, retried: Bool = false) async throws {
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw APIError.transport(error)
+        }
+        guard let http = response as? HTTPURLResponse else { throw APIError.badStatus(0, nil) }
+        if http.statusCode == 401 {
+            if !retried, let session, await session.refreshIfPossible() {
+                var retry = request
+                if let token = session.accessToken {
+                    retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                try await performVoid(retry, retried: true)
+                return
+            }
+            throw APIError.unauthorized
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw APIError.badStatus(http.statusCode, String(data: data, encoding: .utf8))
+        }
+    }
+
     func upload(_ urlString: String, data: Data, mimeType: String) async throws {
         guard let url = URL(string: urlString) else { throw APIError.badStatus(0, "bad url") }
         var req = URLRequest(url: url)

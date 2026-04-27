@@ -307,6 +307,9 @@ async function main() {
       },
     });
 
+    // Seeded photographers are treated as already-onboarded so they show up
+    // in search. Real users land in onboarding via POST /me/photographer/onboarding/start.
+    const seededOnboardingDate = new Date('2024-01-01T00:00:00Z');
     const profile = await prisma.photographerProfile.upsert({
       where: { userId: user.id },
       update: {
@@ -317,6 +320,8 @@ async function main() {
         hourlyRateCents: p.hourlyRateCents,
         avgRating: p.avgRating,
         ratingCount: p.ratingCount,
+        onboardingStartedAt: seededOnboardingDate,
+        onboardingCompletedAt: seededOnboardingDate,
       },
       create: {
         userId: user.id,
@@ -327,6 +332,8 @@ async function main() {
         hourlyRateCents: p.hourlyRateCents,
         avgRating: p.avgRating,
         ratingCount: p.ratingCount,
+        onboardingStartedAt: seededOnboardingDate,
+        onboardingCompletedAt: seededOnboardingDate,
       },
     });
 

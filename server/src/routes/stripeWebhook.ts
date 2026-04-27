@@ -5,6 +5,8 @@ import { env } from '../lib/env.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 import { dispatchPush } from '../services/notifications.js';
+import { applyOnboardingComplete } from '../services/applyOnboardingComplete.js';
+import { accountIsReady } from '../services/connect.js';
 
 export const stripeWebhookRouter = Router();
 
@@ -148,6 +150,21 @@ stripeWebhookRouter.post(
               data: { status: 'open', heldUntil: null },
             }),
           ]);
+          break;
+        }
+        case 'account.updated': {
+          // Stripe Connect onboarding completion. We key off the same predicate
+          // that `connect.accountIsReady` exposes so a partially-completed
+          // onboarding (e.g. capabilities pending review) doesn't prematurely
+          // flip the photographer to active.
+          const account = event.data.object as Stripe.Account;
+          if (!accountIsReady(account)) break;
+          const profile = await prisma.photographerProfile.findUnique({
+            where: { stripeAccountId: account.id },
+            select: { id: true },
+          });
+          if (!profile) break;
+          await applyOnboardingComplete(profile.id);
           break;
         }
         default:
